@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/joho/godotenv"
 	"github.com/khrees/cloakee/config"
+	"github.com/khrees/cloakee/models"
 	"github.com/khrees/cloakee/routes"
 )
 
@@ -30,8 +31,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if _, err := dbCfg.Connect(); err != nil {
+	db, err := dbCfg.Connect()
+	if err != nil {
 		log.Printf("database unavailable: %v", err)
+	} else if err := db.AutoMigrate(&models.Domain{}, &models.Alias{}, &models.ReplyToken{}, &models.ForwardLog{}); err != nil {
+		log.Fatalf("migrate: %v", err)
 	}
 
 	routes.SetupRoutes(app)

@@ -1,0 +1,57 @@
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type Domain struct {
+	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Domain    string         `json:"domain" gorm:"type:text;not null;uniqueIndex"`
+	Verified  bool           `json:"verified" gorm:"not null;default:false"`
+	CreatedAt time.Time      `json:"created_at" gorm:"not null;default:now()"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+func (Domain) TableName() string { return "domains" }
+
+type Alias struct {
+	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Address      string     `json:"address" gorm:"type:text;not null;uniqueIndex"`
+	Slug         string     `json:"slug" gorm:"type:text;not null"`
+	Domain       string     `json:"domain" gorm:"type:text;not null"`
+	RealEmail    string     `json:"real_email" gorm:"type:text;not null"`
+	Label        *string    `json:"label,omitempty" gorm:"type:text"`
+	Enabled      bool       `json:"enabled" gorm:"not null;default:true"`
+	ForwardCount int        `json:"forward_count" gorm:"not null;default:0"`
+	CreatedAt    time.Time  `json:"created_at" gorm:"not null;default:now()"`
+	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
+}
+
+func (Alias) TableName() string { return "aliases" }
+
+type ReplyToken struct {
+	Token           string    `json:"token" gorm:"type:text;primaryKey"`
+	AliasID         uuid.UUID `json:"alias_id" gorm:"type:uuid;not null;index"`
+	OriginalSender  string    `json:"original_sender" gorm:"type:text;not null"`
+	OriginalSubject *string   `json:"original_subject,omitempty" gorm:"type:text"`
+	ThreadID        *string   `json:"thread_id,omitempty" gorm:"type:text"`
+	CreatedAt       time.Time `json:"created_at" gorm:"not null;default:now()"`
+	ExpiresAt       time.Time `json:"expires_at" gorm:"not null"`
+}
+
+func (ReplyToken) TableName() string { return "reply_tokens" }
+
+type ForwardLog struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AliasID   uuid.UUID `json:"alias_id" gorm:"type:uuid;not null;index"`
+	Direction string    `json:"direction" gorm:"type:text;not null;check:direction IN ('inbound','reply')"`
+	Sender    *string   `json:"sender,omitempty" gorm:"type:text"`
+	Subject   *string   `json:"subject,omitempty" gorm:"type:text"`
+	Status    string    `json:"status" gorm:"type:text;not null;check:status IN ('delivered','blocked','bounced')"`
+	CreatedAt time.Time `json:"created_at" gorm:"not null;default:now();index"`
+}
+
+func (ForwardLog) TableName() string { return "forward_logs" }
