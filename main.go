@@ -6,6 +6,8 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/gofiber/fiber/v3"
 	"github.com/joho/godotenv"
+	"github.com/khrees/cloakee/config"
+	"github.com/khrees/cloakee/routes"
 )
 
 type Config struct {
@@ -18,23 +20,25 @@ func main() {
 	_ = godotenv.Load()
 
 	var cfg Config
-	err := env.Parse(&cfg)
+	cfg, err := env.ParseAs[Config]()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// parse with generics
-	cfg, err = env.ParseAs[Config]()
-	if err != nil {
+	dbCfg := &config.DBConfig{}
+	if err := env.Parse(dbCfg); err != nil {
 		log.Fatal(err)
 	}
 
-	// Define a route for the GET method on the root path '/'
+	if _, err := dbCfg.Connect(); err != nil {
+		log.Printf("database unavailable: %v", err)
+	}
+
+	routes.SetupRoutes(app)
+
 	app.Get("/", func(c fiber.Ctx) error {
-		// Send a string response to the client
 		return c.SendString("Hello, World 👋!")
 	})
 
-	// Start the server
 	log.Fatal(app.Listen(":" + cfg.Port))
 }
