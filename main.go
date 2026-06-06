@@ -1,14 +1,14 @@
 package main
 
 import (
-	"log"
-
 	"github.com/caarlos0/env/v11"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/joho/godotenv"
 	"github.com/khrees/cloakee/config"
 	"github.com/khrees/cloakee/models"
+	"github.com/khrees/cloakee/repositories"
 	"github.com/khrees/cloakee/routes"
+	"github.com/khrees/cloakee/services"
 )
 
 type Config struct {
@@ -16,8 +16,6 @@ type Config struct {
 }
 
 func main() {
-	app := fiber.New()
-
 	_ = godotenv.Load()
 
 	var cfg Config
@@ -33,16 +31,26 @@ func main() {
 
 	db, err := dbCfg.Connect()
 	if err != nil {
-		log.Printf("database unavailable: %v", err)
-	} else if err := db.AutoMigrate(&models.Domain{}, &models.Alias{}, &models.ReplyToken{}, &models.ForwardLog{}); err != nil {
+		log.Fatalf("database unavailable: %v", err)
+	}
+	if err := db.AutoMigrate(&models.Domain{}, &models.Alias{}, &models.ReplyToken{}, &models.ForwardLog{}); err != nil {
 		log.Fatalf("migrate: %v", err)
 	}
 
-	routes.SetupRoutes(app)
+	// Repository Layer
+	domainRepo := repositories.NewDomainRepository(db)
+	aliasRepo := repositories.NewAliasRepository(db)
+	forwardLogRepo := repositories.NewForwardLogRepository(db)
 
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Hello, World 👋!")
+	// Service Layer
+	domainSvc := services.NewDomainService(domainRepo)
+	aliasSvc := services.NewAliasService(aliasRepo)
+	forwardLogSvc := services.NewForwardLogService(forwardLogRepo)
+
+	server := NewServer(cfg.Port, routes.RouteDeps{
+		DomainSvc:     domainSvc,
+		AliasSvc:      aliasSvc,
+		ForwardLogSvc: forwardLogSvc,
 	})
-
-	log.Fatal(app.Listen(":" + cfg.Port))
+	log.Fatal(server.Start())
 }

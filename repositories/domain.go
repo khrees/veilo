@@ -1,0 +1,45 @@
+package repositories
+
+import (
+	"github.com/khrees/cloakee/models"
+	"gorm.io/gorm"
+)
+
+type DomainRepository interface {
+	Create(d *models.Domain) error
+	Delete(id string) error
+	FindAll() ([]models.Domain, error)
+	FindByID(id string) (*models.Domain, error)
+	FindByDomain(domain string) (*models.Domain, error)
+}
+
+type domainRepository struct {
+	db *gorm.DB
+}
+
+func NewDomainRepository(db *gorm.DB) DomainRepository {
+	return &domainRepository{db: db}
+}
+
+func (r *domainRepository) Create(d *models.Domain) error {
+	return r.db.Create(d).Error
+}
+
+func (r *domainRepository) Delete(id string) error {
+	return r.db.Delete(&models.Domain{}, "id = ?", id).Error
+}
+
+func (r *domainRepository) FindAll() ([]models.Domain, error) {
+	var domains []models.Domain
+	return domains, r.db.Find(&domains).Error
+}
+
+func (r *domainRepository) FindByID(id string) (*models.Domain, error) {
+	var domain models.Domain
+	return &domain, r.db.First(&domain, "id = ?", id).Error
+}
+
+func (r *domainRepository) FindByDomain(domain string) (*models.Domain, error) {
+	var d models.Domain
+	return &d, r.db.Where("domain = ?", domain).First(&d).Error
+}
