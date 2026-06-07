@@ -21,7 +21,7 @@ func setupTestDB() *gorm.DB {
 	// Create tables manually without PostgreSQL-specific defaults
 	err = db.Exec(`CREATE TABLE "domains" (
 		"id" TEXT PRIMARY KEY,
-		"domain" TEXT NOT NULL UNIQUE,
+		"name" TEXT NOT NULL UNIQUE,
 		"verified" INTEGER NOT NULL DEFAULT 0,
 		"created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		"deleted_at" DATETIME
@@ -82,7 +82,7 @@ func TestDomainRepository_Create(t *testing.T) {
 	repo := repositories.NewDomainRepository(db)
 
 	domain := &models.Domain{
-		Domain:   "test.com",
+		Name:     "test.com",
 		Verified: false,
 	}
 
@@ -104,7 +104,7 @@ func TestDomainRepository_Delete(t *testing.T) {
 
 	// Create a domain first
 	domain := &models.Domain{
-		Domain:   "test.com",
+		Name:     "test.com",
 		Verified: false,
 	}
 	err := repo.Create(domain)
@@ -133,9 +133,9 @@ func TestDomainRepository_FindAll(t *testing.T) {
 
 	// Create multiple domains
 	domains := []*models.Domain{
-		{Domain: "domain1.com", Verified: false},
-		{Domain: "domain2.com", Verified: true},
-		{Domain: "domain3.com", Verified: false},
+		{Name: "domain1.com", Verified: false},
+		{Name: "domain2.com", Verified: true},
+		{Name: "domain3.com", Verified: false},
 	}
 
 	for _, d := range domains {
@@ -164,7 +164,7 @@ func TestDomainRepository_FindByID(t *testing.T) {
 
 	// Create a domain
 	domain := &models.Domain{
-		Domain:   "test.com",
+		Name:     "test.com",
 		Verified: false,
 	}
 	err := repo.Create(domain)
@@ -181,12 +181,12 @@ func TestDomainRepository_FindByID(t *testing.T) {
 	if result.ID != domain.ID {
 		t.Errorf("expected ID %v, got %v", domain.ID, result.ID)
 	}
-	if result.Domain != "test.com" {
-		t.Errorf("expected domain 'test.com', got '%s'", result.Domain)
+	if result.Name != "test.com" {
+		t.Errorf("expected domain 'test.com', got '%s'", result.Name)
 	}
 }
 
-func TestDomainRepository_FindByDomain(t *testing.T) {
+func TestDomainRepository_FindByName(t *testing.T) {
 	db := setupTestDB()
 	defer db.Migrator().DropTable(&models.Domain{})
 
@@ -194,7 +194,7 @@ func TestDomainRepository_FindByDomain(t *testing.T) {
 
 	// Create a domain
 	domain := &models.Domain{
-		Domain:   "test.com",
+		Name:     "test.com",
 		Verified: false,
 	}
 	err := repo.Create(domain)
@@ -203,13 +203,13 @@ func TestDomainRepository_FindByDomain(t *testing.T) {
 	}
 
 	// Find by domain name
-	result, err := repo.FindByDomain("test.com")
+	result, err := repo.FindByName("test.com")
 	if err != nil {
 		t.Fatalf("failed to find domain by name: %v", err)
 	}
 
-	if result.Domain != "test.com" {
-		t.Errorf("expected domain 'test.com', got '%s'", result.Domain)
+	if result.Name != "test.com" {
+		t.Errorf("expected domain 'test.com', got '%s'", result.Name)
 	}
 }
 

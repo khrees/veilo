@@ -49,8 +49,8 @@ func (m *mockDomainService) FindByID(id string) (*models.Domain, error) {
 	return nil, args.Error(1)
 }
 
-func (m *mockDomainService) FindByDomain(domain string) (*models.Domain, error) {
-	args := m.Called(domain)
+func (m *mockDomainService) FindByName(name string) (*models.Domain, error) {
+	args := m.Called(name)
 	if arg0 := args.Get(0); arg0 != nil {
 		return arg0.(*models.Domain), args.Error(1)
 	}
@@ -173,8 +173,8 @@ func TestDomainController_RegisterDomain_ValidationError(t *testing.T) {
 func TestDomainController_ListDomains(t *testing.T) {
 	mockSvc := new(mockDomainService)
 	domains := []models.Domain{
-		{ID: uuid.New(), Domain: "domain1.com", Verified: true},
-		{ID: uuid.New(), Domain: "domain2.com", Verified: false},
+		{ID: uuid.New(), Name: "domain1.com", Verified: true},
+		{ID: uuid.New(), Name: "domain2.com", Verified: false},
 	}
 	mockSvc.On("FindAll").Return(domains, nil)
 
@@ -228,8 +228,8 @@ func TestDomainController_ListDomains_Error(t *testing.T) {
 
 func TestDomainController_GetDomain(t *testing.T) {
 	mockSvc := new(mockDomainService)
-	domain := &models.Domain{ID: uuid.New(), Domain: "test.com", Verified: true}
-	mockSvc.On("FindByDomain", "test.com").Return(domain, nil)
+	domain := &models.Domain{ID: uuid.New(), Name: "test.com", Verified: true}
+	mockSvc.On("FindByName", "test.com").Return(domain, nil)
 
 	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
 

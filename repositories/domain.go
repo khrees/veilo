@@ -10,7 +10,7 @@ type DomainRepository interface {
 	Delete(id string) error
 	FindAll() ([]models.Domain, error)
 	FindByID(id string) (*models.Domain, error)
-	FindByDomain(domain string) (*models.Domain, error)
+	FindByName(name string) (*models.Domain, error)
 }
 
 type domainRepository struct {
@@ -39,7 +39,7 @@ func (r *domainRepository) FindByID(id string) (*models.Domain, error) {
 	return &domain, r.db.First(&domain, "id = ?", id).Error
 }
 
-func (r *domainRepository) FindByDomain(domain string) (*models.Domain, error) {
+func (r *domainRepository) FindByName(name string) (*models.Domain, error) {
 	var d models.Domain
-	return &d, r.db.Where("domain = ?", domain).First(&d).Error
+	return &d, r.db.Where("name = ?", name).First(&d).Error
 }

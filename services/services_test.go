@@ -58,12 +58,12 @@ func (m *mockDomainRepository) FindByID(id string) (*models.Domain, error) {
 	return d, nil
 }
 
-func (m *mockDomainRepository) FindByDomain(domain string) (*models.Domain, error) {
+func (m *mockDomainRepository) FindByName(name string) (*models.Domain, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	for _, d := range m.domains {
-		if d.Domain == domain {
+		if d.Name == name {
 			return d, nil
 		}
 	}
@@ -182,8 +182,8 @@ func TestDomainService_Register(t *testing.T) {
 	if len(domains) != 1 {
 		t.Errorf("expected 1 domain, got %d", len(domains))
 	}
-	if domains[0].Domain != "test.com" {
-		t.Errorf("expected domain 'test.com', got '%s'", domains[0].Domain)
+	if domains[0].Name != "test.com" {
+		t.Errorf("expected domain 'test.com', got '%s'", domains[0].Name)
 	}
 }
 
@@ -216,8 +216,8 @@ func TestDomainService_Remove(t *testing.T) {
 func TestDomainService_FindAll(t *testing.T) {
 	mockRepo := &mockDomainRepository{
 		domains: map[string]*models.Domain{
-			"1": {ID: uuid.New(), Domain: "domain1.com", Verified: true},
-			"2": {ID: uuid.New(), Domain: "domain2.com", Verified: false},
+			"1": {ID: uuid.New(), Name: "domain1.com", Verified: true},
+			"2": {ID: uuid.New(), Name: "domain2.com", Verified: false},
 		},
 	}
 	svc := services.NewDomainService(mockRepo)
@@ -236,7 +236,7 @@ func TestDomainService_FindByID(t *testing.T) {
 	id := uuid.New()
 	mockRepo := &mockDomainRepository{
 		domains: map[string]*models.Domain{
-			id.String(): {ID: id, Domain: "test.com", Verified: true},
+			id.String(): {ID: id, Name: "test.com", Verified: true},
 		},
 	}
 	svc := services.NewDomainService(mockRepo)
@@ -246,26 +246,26 @@ func TestDomainService_FindByID(t *testing.T) {
 		t.Fatalf("failed to find domain by ID: %v", err)
 	}
 
-	if domain.Domain != "test.com" {
-		t.Errorf("expected domain 'test.com', got '%s'", domain.Domain)
+	if domain.Name != "test.com" {
+		t.Errorf("expected domain 'test.com', got '%s'", domain.Name)
 	}
 }
 
-func TestDomainService_FindByDomain(t *testing.T) {
+func TestDomainService_FindByName(t *testing.T) {
 	mockRepo := &mockDomainRepository{
 		domains: map[string]*models.Domain{
-			"1": {Domain: "test.com", Verified: true},
+			"1": {Name: "test.com", Verified: true},
 		},
 	}
 	svc := services.NewDomainService(mockRepo)
 
-	domain, err := svc.FindByDomain("test.com")
+	domain, err := svc.FindByName("test.com")
 	if err != nil {
 		t.Fatalf("failed to find domain by name: %v", err)
 	}
 
-	if domain.Domain != "test.com" {
-		t.Errorf("expected domain 'test.com', got '%s'", domain.Domain)
+	if domain.Name != "test.com" {
+		t.Errorf("expected domain 'test.com', got '%s'", domain.Name)
 	}
 }
 

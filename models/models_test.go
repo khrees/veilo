@@ -42,7 +42,7 @@ func TestDomainStruct(t *testing.T) {
 
 	domain := &models.Domain{
 		ID:        id,
-		Domain:    "test.com",
+		Name:      "test.com",
 		Verified:  true,
 		CreatedAt: now,
 	}
@@ -50,8 +50,8 @@ func TestDomainStruct(t *testing.T) {
 	if domain.ID != id {
 		t.Errorf("expected ID %v, got %v", id, domain.ID)
 	}
-	if domain.Domain != "test.com" {
-		t.Errorf("expected domain 'test.com', got '%s'", domain.Domain)
+	if domain.Name != "test.com" {
+		t.Errorf("expected domain 'test.com', got '%s'", domain.Name)
 	}
 	if domain.Verified != true {
 		t.Errorf("expected verified true, got %v", domain.Verified)
@@ -106,9 +106,9 @@ func TestReplyTokenStruct(t *testing.T) {
 	expiresAt := now.Add(time.Hour)
 
 	token := &models.ReplyToken{
-		Token:         "test-token",
-		AliasID:       uuid.New(),
-		OriginalSender: "sender@example.com",
+		Token:           "test-token",
+		AliasID:         uuid.New(),
+		OriginalSender:  "sender@example.com",
 		OriginalSubject: stringPtr("Test Subject"),
 		ThreadID:        stringPtr("thread-123"),
 		CreatedAt:       now,

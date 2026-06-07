@@ -10,7 +10,7 @@ import (
 
 type Domain struct {
 	ID        uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Domain    string         `json:"domain" gorm:"type:text;not null;uniqueIndex"`
+	Name      string         `json:"name" gorm:"type:text;not null;uniqueIndex"`
 	Verified  bool           `json:"verified" gorm:"not null;default:false"`
 	CreatedAt time.Time      `json:"created_at" gorm:"not null;default:now()"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`

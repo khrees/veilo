@@ -2,7 +2,7 @@
 package config
 
 import (
-	"crypto/tls"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"net/url"
@@ -80,19 +80,37 @@ func (c *DBConfig) preflight() error {
 			address, err,
 		)
 	}
-	_ = tcpConn.Close()
+	defer tcpConn.Close()
 
-	tlsConn, err := tls.DialWithDialer(dialer, "tcp", address, &tls.Config{
-		ServerName: c.Host,
-		MinVersion: tls.VersionTLS12,
-	})
-	if err != nil {
+	if err := tcpConn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return fmt.Errorf("database preflight failed setting deadline at %s: %w", address, err)
+	}
+
+	var sslRequest [8]byte
+	binary.BigEndian.PutUint32(sslRequest[0:4], 8)
+	binary.BigEndian.PutUint32(sslRequest[4:8], 80877103)
+
+	if _, err := tcpConn.Write(sslRequest[:]); err != nil {
 		return fmt.Errorf(
-			"database TLS preflight failed at %s: %w. If this only happens on a VPN, the VPN exit IP or TLS interception is likely the cause",
+			"database SSL negotiation failed before login at %s: %w. This usually means the network path is being reset by a VPN, proxy, firewall, or Supabase restriction",
 			address, err,
 		)
 	}
-	_ = tlsConn.Close()
+
+	var response [1]byte
+	if _, err := tcpConn.Read(response[:]); err != nil {
+		return fmt.Errorf(
+			"database SSL negotiation failed while waiting for %s to respond: %w. This usually means the network path is being reset by a VPN, proxy, firewall, or Supabase restriction",
+			address, err,
+		)
+	}
+
+	if response[0] != 'S' {
+		return fmt.Errorf(
+			"database at %s does not accept SSL connections. Supabase pooler should accept SSL, so check the host/port and environment variables",
+			address,
+		)
+	}
 
 	return nil
 }

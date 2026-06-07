@@ -1,3 +1,4 @@
+// Package repositories contains the data access layer for the application.
 package repositories
 
 import (
