@@ -18,6 +18,13 @@ type Domain struct {
 
 func (Domain) TableName() string { return "domains" }
 
+func (d *Domain) BeforeCreate(tx *gorm.DB) error {
+	if d.ID == uuid.Nil {
+		d.ID = uuid.New()
+	}
+	return nil
+}
+
 type Alias struct {
 	ID           uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Address      string     `json:"address" gorm:"type:text;not null;uniqueIndex"`
@@ -32,6 +39,13 @@ type Alias struct {
 }
 
 func (Alias) TableName() string { return "aliases" }
+
+func (a *Alias) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
+	}
+	return nil
+}
 
 type ReplyToken struct {
 	Token           string    `json:"token" gorm:"type:text;primaryKey"`
@@ -56,3 +70,10 @@ type ForwardLog struct {
 }
 
 func (ForwardLog) TableName() string { return "forward_logs" }
+
+func (f *ForwardLog) BeforeCreate(tx *gorm.DB) error {
+	if f.ID == uuid.Nil {
+		f.ID = uuid.New()
+	}
+	return nil
+}

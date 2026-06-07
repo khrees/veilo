@@ -15,7 +15,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/google/uuid"
-	"github.com/khrees/cloakee/routes"
+	"github.com/khrees/veilo/routes"
 )
 
 type server struct {

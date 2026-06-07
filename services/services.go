@@ -3,8 +3,8 @@ package services
 
 import (
 	"github.com/google/uuid"
-	"github.com/khrees/cloakee/models"
-	"github.com/khrees/cloakee/repositories"
+	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/repositories"
 )
 
 // --------------------

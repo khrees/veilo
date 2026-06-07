@@ -1,14 +1,16 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/caarlos0/env/v11"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/joho/godotenv"
-	"github.com/khrees/cloakee/config"
-	"github.com/khrees/cloakee/models"
-	"github.com/khrees/cloakee/repositories"
-	"github.com/khrees/cloakee/routes"
-	"github.com/khrees/cloakee/services"
+	"github.com/khrees/veilo/config"
+	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/repositories"
+	"github.com/khrees/veilo/routes"
+	"github.com/khrees/veilo/services"
 )
 
 type Config struct {
@@ -28,6 +30,16 @@ func main() {
 	if err := env.Parse(dbCfg); err != nil {
 		log.Fatal(err)
 	}
+	log.Infof(
+		"db config loaded host=%s port=%s user=%s db=%s sslmode=%s password_len=%d database_url=%t",
+		dbCfg.Host,
+		dbCfg.Port,
+		dbCfg.User,
+		dbCfg.DBName,
+		strings.TrimSpace(dbCfg.SSLMode),
+		len(dbCfg.Password),
+		strings.TrimSpace(dbCfg.URL) != "",
+	)
 
 	db, err := dbCfg.Connect()
 	if err != nil {

@@ -3,7 +3,7 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v3"
-	"github.com/khrees/cloakee/services"
+	"github.com/khrees/veilo/services"
 )
 
 // RouteDeps groups the services required to register the API routes.
@@ -71,7 +71,7 @@ func (c *domainController) RegisterDomain(ctx fiber.Ctx) error {
 		Domain string `json:"domain"`
 	}
 	if err := ctx.Bind().Body(&body); err != nil {
-		return err
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	if err := c.domainSvc.Register(body.Domain); err != nil {
 		return err
@@ -136,7 +136,7 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		Enabled   *bool   `json:"enabled,omitempty"`
 	}
 	if err := ctx.Bind().Body(&body); err != nil {
-		return err
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	enabled := true
@@ -187,7 +187,7 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 	}
 
 	if err := ctx.Bind().Body(&body); err != nil {
-		return err
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	updates := make(map[string]any)
@@ -247,10 +247,10 @@ func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
 	offset := 0
 
 	if l := ctx.Query("limit"); l != "" {
-		limit = parseInt(l)
+		limit = ParseInt(l)
 	}
 	if o := ctx.Query("offset"); o != "" {
-		offset = parseInt(o)
+		offset = ParseInt(o)
 	}
 
 	logs, err := c.forwardLogSvc.GetByAliasID(aliasID, limit, offset)
@@ -261,7 +261,9 @@ func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
 	return ctx.JSON(logs)
 }
 
-func parseInt(value string) int {
+// ParseInt converts a string to an integer, stopping at non-digit characters.
+// It returns 0 if the string doesn't start with a digit.
+func ParseInt(value string) int {
 	var result int
 	for _, c := range value {
 		if c < '0' || c > '9' {

@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github.com/khrees/cloakee/models"
+	"github.com/khrees/veilo/models"
 	"gorm.io/gorm"
 )
 
