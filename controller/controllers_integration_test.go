@@ -3,7 +3,7 @@ package routes_test
 import (
 	"testing"
 
-	"github.com/khrees/veilo/routes"
+	routes "github.com/khrees/veilo/controller"
 )
 
 // Test the parseInt helper function (it's not exported, so we test it via the routes package)
