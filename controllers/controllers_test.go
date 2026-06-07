@@ -1,4 +1,4 @@
-package routes_test
+package controllers_test
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"github.com/khrees/veilo/controllers"
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/repositories"
-	"github.com/khrees/veilo/routes"
 	"github.com/khrees/veilo/services"
 	"github.com/stretchr/testify/mock"
 )
@@ -116,12 +116,12 @@ func (m *mockForwardLogService) GetStats() (*repositories.Stats, error) {
 }
 
 // Helper to create test app
-func createTestApp(deps routes.RouteDeps) *fiber.App {
+func createTestApp(deps controllers.RouteDeps) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	})
-	routes.SetupRoutes(app, deps)
+	controllers.SetupRoutes(app, deps)
 	return app
 }
 
@@ -129,7 +129,7 @@ func TestDomainController_RegisterDomain(t *testing.T) {
 	mockSvc := new(mockDomainService)
 	mockSvc.On("Register", "test.com").Return(nil)
 
-	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	body := map[string]string{"domain": "test.com"}
 	jsonBody, _ := json.Marshal(body)
@@ -153,7 +153,7 @@ func TestDomainController_RegisterDomain(t *testing.T) {
 func TestDomainController_RegisterDomain_ValidationError(t *testing.T) {
 	mockSvc := new(mockDomainService)
 
-	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	// Send invalid JSON
 	req := httptest.NewRequest(http.MethodPost, "/api/domains", bytes.NewBufferString("{invalid json"))
@@ -178,7 +178,7 @@ func TestDomainController_ListDomains(t *testing.T) {
 	}
 	mockSvc.On("FindAll").Return(domains, nil)
 
-	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/domains", nil)
 
@@ -192,14 +192,21 @@ func TestDomainController_ListDomains(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	var result []models.Domain
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	var apiResp struct {
+		Success bool            `json:"success"`
+		Data    []models.Domain `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&apiResp)
 	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if len(result) != 2 {
-		t.Errorf("expected 2 domains, got %d", len(result))
+	if !apiResp.Success {
+		t.Errorf("expected success true, got false")
+	}
+
+	if len(apiResp.Data) != 2 {
+		t.Errorf("expected 2 domains, got %d", len(apiResp.Data))
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -209,7 +216,7 @@ func TestDomainController_ListDomains_Error(t *testing.T) {
 	mockSvc := new(mockDomainService)
 	mockSvc.On("FindAll").Return(nil, errors.New("boom"))
 
-	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/domains", nil)
 
@@ -231,7 +238,7 @@ func TestDomainController_GetDomain(t *testing.T) {
 	domain := &models.Domain{ID: uuid.New(), Name: "test.com", Verified: true}
 	mockSvc.On("FindByName", "test.com").Return(domain, nil)
 
-	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/domains/test.com", nil)
 
@@ -252,7 +259,7 @@ func TestDomainController_RemoveDomain(t *testing.T) {
 	mockSvc := new(mockDomainService)
 	mockSvc.On("Remove", "test.com").Return(nil)
 
-	app := createTestApp(routes.RouteDeps{DomainSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/domains/test.com", nil)
 
@@ -262,8 +269,8 @@ func TestDomainController_RemoveDomain(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("expected status %d, got %d", http.StatusNoContent, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -282,7 +289,7 @@ func TestAliasController_CreateAlias(t *testing.T) {
 	}
 	mockSvc.On("Create", mock.Anything).Return(alias, nil)
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	body := map[string]any{
 		"address":    "test@test.com",
@@ -301,8 +308,8 @@ func TestAliasController_CreateAlias(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected status %d, got %d", http.StatusCreated, resp.StatusCode)
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -312,7 +319,7 @@ func TestAliasController_CreateAlias_Error(t *testing.T) {
 	mockSvc := new(mockAliasService)
 	mockSvc.On("Create", mock.Anything).Return((*models.Alias)(nil), errors.New("boom"))
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	body := map[string]any{
 		"address":    "test@test.com",
@@ -352,7 +359,7 @@ func TestAliasController_CreateAlias_WithOptionalFields(t *testing.T) {
 	}
 	mockSvc.On("Create", mock.Anything).Return(alias, nil)
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	body := map[string]any{
 		"address":    "test@test.com",
@@ -373,8 +380,8 @@ func TestAliasController_CreateAlias_WithOptionalFields(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected status %d, got %d", http.StatusCreated, resp.StatusCode)
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -388,7 +395,7 @@ func TestAliasController_ListAliases(t *testing.T) {
 	}
 	mockSvc.On("GetAll").Return(aliases, nil)
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/aliases", nil)
 
@@ -402,14 +409,21 @@ func TestAliasController_ListAliases(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	var result []models.Alias
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	var apiResp struct {
+		Success bool           `json:"success"`
+		Data    []models.Alias `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&apiResp)
 	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if len(result) != 2 {
-		t.Errorf("expected 2 aliases, got %d", len(result))
+	if !apiResp.Success {
+		t.Errorf("expected success true, got false")
+	}
+
+	if len(apiResp.Data) != 2 {
+		t.Errorf("expected 2 aliases, got %d", len(apiResp.Data))
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -420,7 +434,7 @@ func TestAliasController_GetAlias(t *testing.T) {
 	alias := &models.Alias{ID: uuid.New(), Address: "test@test.com", Enabled: true}
 	mockSvc.On("GetByID", mock.Anything).Return(alias, nil)
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/aliases/some-id", nil)
 
@@ -441,7 +455,7 @@ func TestAliasController_UpdateAlias(t *testing.T) {
 	mockSvc := new(mockAliasService)
 	mockSvc.On("Update", mock.Anything, mock.Anything).Return(nil)
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	body := map[string]any{
 		"real_email": "new@example.com",
@@ -458,8 +472,8 @@ func TestAliasController_UpdateAlias(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("expected status %d, got %d", http.StatusNoContent, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -469,7 +483,7 @@ func TestAliasController_DeleteAlias(t *testing.T) {
 	mockSvc := new(mockAliasService)
 	mockSvc.On("Delete", mock.Anything).Return(nil)
 
-	app := createTestApp(routes.RouteDeps{AliasSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/aliases/some-id", nil)
 
@@ -479,8 +493,8 @@ func TestAliasController_DeleteAlias(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("expected status %d, got %d", http.StatusNoContent, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -495,7 +509,7 @@ func TestForwardLogController_GetForwardLogs(t *testing.T) {
 	}
 	mockSvc.On("GetByAliasID", aliasID.String(), 50, 0).Return(logs, nil)
 
-	app := createTestApp(routes.RouteDeps{ForwardLogSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/forward-logs/"+aliasID.String(), nil)
 
@@ -509,14 +523,21 @@ func TestForwardLogController_GetForwardLogs(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	var result []models.ForwardLog
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	var apiResp struct {
+		Success bool                `json:"success"`
+		Data    []models.ForwardLog `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&apiResp)
 	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if len(result) != 2 {
-		t.Errorf("expected 2 forward logs, got %d", len(result))
+	if !apiResp.Success {
+		t.Errorf("expected success true, got false")
+	}
+
+	if len(apiResp.Data) != 2 {
+		t.Errorf("expected 2 forward logs, got %d", len(apiResp.Data))
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -526,7 +547,7 @@ func TestForwardLogController_GetForwardLogs_WithPagination(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
 	mockSvc.On("GetByAliasID", mock.Anything, mock.Anything, mock.Anything).Return([]models.ForwardLog{}, nil)
 
-	app := createTestApp(routes.RouteDeps{ForwardLogSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/forward-logs/"+uuid.New().String()+"?limit=10&offset=20", nil)
 
@@ -547,7 +568,7 @@ func TestForwardLogController_GetForwardLogs_DefaultPagination(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
 	mockSvc.On("GetByAliasID", mock.Anything, 50, 0).Return([]models.ForwardLog{}, nil)
 
-	app := createTestApp(routes.RouteDeps{ForwardLogSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/forward-logs/"+uuid.New().String(), nil)
 
@@ -573,7 +594,7 @@ func TestStatsController_GetStats(t *testing.T) {
 	}
 	mockSvc.On("GetStats").Return(stats, nil)
 
-	app := createTestApp(routes.RouteDeps{ForwardLogSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/stats", nil)
 
@@ -587,20 +608,27 @@ func TestStatsController_GetStats(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	var result repositories.Stats
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	var apiResp struct {
+		Success bool               `json:"success"`
+		Data    repositories.Stats `json:"data"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&apiResp)
 	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if result.TotalAliases != 10 {
-		t.Errorf("expected 10 total aliases, got %d", result.TotalAliases)
+	if !apiResp.Success {
+		t.Errorf("expected success true, got false")
 	}
-	if result.TotalForwarded != 100 {
-		t.Errorf("expected 100 total forwarded, got %d", result.TotalForwarded)
+
+	if apiResp.Data.TotalAliases != 10 {
+		t.Errorf("expected 10 total aliases, got %d", apiResp.Data.TotalAliases)
 	}
-	if result.TotalBlocked != 5 {
-		t.Errorf("expected 5 total blocked, got %d", result.TotalBlocked)
+	if apiResp.Data.TotalForwarded != 100 {
+		t.Errorf("expected 100 total forwarded, got %d", apiResp.Data.TotalForwarded)
+	}
+	if apiResp.Data.TotalBlocked != 5 {
+		t.Errorf("expected 5 total blocked, got %d", apiResp.Data.TotalBlocked)
 	}
 
 	mockSvc.AssertExpectations(t)
@@ -610,7 +638,7 @@ func TestStatsController_GetStats_Error(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
 	mockSvc.On("GetStats").Return((*repositories.Stats)(nil), errors.New("boom"))
 
-	app := createTestApp(routes.RouteDeps{ForwardLogSvc: mockSvc})
+	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/stats", nil)
 

@@ -1,5 +1,5 @@
-// Package routes registers all HTTP routes.
-package routes
+// Package controllers registers all HTTP route controllers.
+package controllers
 
 import (
 	"github.com/gofiber/fiber/v3"

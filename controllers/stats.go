@@ -1,4 +1,4 @@
-package routes
+package controllers
 
 import (
 	"github.com/gofiber/fiber/v3"
@@ -25,5 +25,5 @@ func (c *statsController) GetStats(ctx fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(stats)
+	return SendSuccess(ctx, fiber.StatusOK, "Stats retrieved successfully", stats)
 }

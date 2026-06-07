@@ -1,8 +1,10 @@
 // Package services contains the service layer for the application.
 package services
 
-import "github.com/khrees/veilo/models"
-import "github.com/khrees/veilo/repositories"
+import (
+	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/repositories"
+)
 
 // IDomainService interface for domain operations
 type IDomainService interface {

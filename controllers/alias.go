@@ -1,4 +1,4 @@
-package routes
+package controllers
 
 import (
 	"github.com/gofiber/fiber/v3"
@@ -54,7 +54,7 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.JSON(alias)
+	return SendSuccess(ctx, fiber.StatusCreated, "Alias created successfully", alias)
 }
 
 func (c *aliasController) ListAliases(ctx fiber.Ctx) error {
@@ -62,7 +62,7 @@ func (c *aliasController) ListAliases(ctx fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(aliases)
+	return SendSuccess(ctx, fiber.StatusOK, "Aliases retrieved successfully", aliases)
 }
 
 func (c *aliasController) GetAlias(ctx fiber.Ctx) error {
@@ -70,7 +70,7 @@ func (c *aliasController) GetAlias(ctx fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(alias)
+	return SendSuccess(ctx, fiber.StatusOK, "Alias retrieved successfully", alias)
 }
 
 func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
@@ -109,12 +109,12 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.SendStatus(fiber.StatusNoContent)
+	return SendSuccess(ctx, fiber.StatusOK, "Alias updated successfully", nil)
 }
 
 func (c *aliasController) DeleteAlias(ctx fiber.Ctx) error {
 	if err := c.aliasSvc.Delete(ctx.Params("id")); err != nil {
 		return err
 	}
-	return ctx.SendStatus(fiber.StatusNoContent)
+	return SendSuccess(ctx, fiber.StatusOK, "Alias deleted successfully", nil)
 }

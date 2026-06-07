@@ -1,4 +1,4 @@
-package routes
+package controllers
 
 import (
 	"github.com/gofiber/fiber/v3"
@@ -28,34 +28,34 @@ func (c *domainController) RegisterDomain(ctx fiber.Ctx) error {
 		Domain string `json:"domain"`
 	}
 	if err := ctx.Bind().Body(&body); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		return SendError(ctx, fiber.StatusBadRequest, "Invalid request body", err)
 	}
 	if err := c.domainSvc.Register(body.Domain); err != nil {
-		return err
+		return SendError(ctx, fiber.StatusInternalServerError, "Failed to register domain", err)
 	}
-	return ctx.SendStatus(fiber.StatusCreated)
+	return SendSuccess(ctx, fiber.StatusCreated, "Domain registered successfully", nil)
 }
 
 func (c *domainController) ListDomains(ctx fiber.Ctx) error {
 	domains, err := c.domainSvc.FindAll()
 	if err != nil {
-		return err
+		return SendError(ctx, fiber.StatusInternalServerError, "Failed to list domains", err)
 	}
-	return ctx.JSON(domains)
+	return SendSuccess(ctx, fiber.StatusOK, "Domains retrieved successfully", domains)
 }
 
 func (c *domainController) GetDomain(ctx fiber.Ctx) error {
 	domain := ctx.Params("domain")
 	d, err := c.domainSvc.FindByName(domain)
 	if err != nil {
-		return err
+		return SendError(ctx, fiber.StatusNotFound, "Domain not found", err)
 	}
-	return ctx.JSON(d)
+	return SendSuccess(ctx, fiber.StatusOK, "Domain retrieved successfully", d)
 }
 
 func (c *domainController) RemoveDomain(ctx fiber.Ctx) error {
 	if err := c.domainSvc.Remove(ctx.Params("domain")); err != nil {
-		return err
+		return SendError(ctx, fiber.StatusInternalServerError, "Failed to remove domain", err)
 	}
-	return ctx.SendStatus(fiber.StatusNoContent)
+	return SendSuccess(ctx, fiber.StatusOK, "Domain removed successfully", nil)
 }

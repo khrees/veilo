@@ -10,7 +10,7 @@ import (
 	"github.com/khrees/veilo/config"
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/repositories"
-	"github.com/khrees/veilo/routes"
+	routes "github.com/khrees/veilo/controllers"
 	"github.com/khrees/veilo/services"
 )
 

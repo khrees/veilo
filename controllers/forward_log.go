@@ -1,4 +1,4 @@
-package routes
+package controllers
 
 import (
 	"github.com/gofiber/fiber/v3"
@@ -38,7 +38,7 @@ func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.JSON(logs)
+	return SendSuccess(ctx, fiber.StatusOK, "Forward logs retrieved successfully", logs)
 }
 
 // ParseInt converts a string to an integer, stopping at non-digit characters.

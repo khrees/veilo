@@ -1,7 +1,9 @@
 package services
 
-import "github.com/khrees/veilo/models"
-import "github.com/khrees/veilo/repositories"
+import (
+	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/repositories"
+)
 
 // IAliasService interface for alias operations
 type IAliasService interface {
