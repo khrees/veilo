@@ -10,12 +10,13 @@ import (
 	"github.com/khrees/veilo/config"
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/repositories"
-	routes "github.com/khrees/veilo/controllers"
+	"github.com/khrees/veilo/controllers"
 	"github.com/khrees/veilo/services"
 )
 
 type Config struct {
-	Port string `env:"PORT"`
+	Port          string `env:"PORT"`
+	WebhookSecret string `env:"WEBHOOK_SECRET,required"`
 }
 
 func main() {
@@ -60,10 +61,11 @@ func main() {
 	aliasSvc := services.NewAliasService(aliasRepo)
 	forwardLogSvc := services.NewForwardLogService(forwardLogRepo)
 
-	server := NewServer(cfg.Port, routes.RouteDeps{
+	server := NewServer(cfg.Port, controllers.RouteDeps{
 		DomainSvc:     domainSvc,
 		AliasSvc:      aliasSvc,
 		ForwardLogSvc: forwardLogSvc,
+		WebhookSecret: cfg.WebhookSecret,
 	})
 	log.Fatal(server.Start())
 }

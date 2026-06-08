@@ -69,8 +69,8 @@ func (m *mockAliasService) Create(input services.AliasCreateInput) (*models.Alia
 	return nil, args.Error(1)
 }
 
-func (m *mockAliasService) GetAll() ([]models.Alias, error) {
-	args := m.Called()
+func (m *mockAliasService) GetAll(filter models.AliasFilter) ([]models.Alias, error) {
+	args := m.Called(filter)
 	if arg0 := args.Get(0); arg0 != nil {
 		return arg0.([]models.Alias), args.Error(1)
 	}
@@ -134,7 +134,7 @@ func TestDomainController_RegisterDomain(t *testing.T) {
 	body := map[string]string{"domain": "test.com"}
 	jsonBody, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/domains", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest(http.MethodPost, "/v1/domains", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -156,7 +156,7 @@ func TestDomainController_RegisterDomain_ValidationError(t *testing.T) {
 	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
 	// Send invalid JSON
-	req := httptest.NewRequest(http.MethodPost, "/api/domains", bytes.NewBufferString("{invalid json"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/domains", bytes.NewBufferString("{invalid json"))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -180,7 +180,7 @@ func TestDomainController_ListDomains(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/domains", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/domains", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -218,7 +218,7 @@ func TestDomainController_ListDomains_Error(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/domains", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/domains", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -240,7 +240,7 @@ func TestDomainController_GetDomain(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/domains/test.com", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/domains/test.com", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -261,7 +261,7 @@ func TestDomainController_RemoveDomain(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{DomainSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/domains/test.com", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/v1/domains/test.com", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -299,7 +299,7 @@ func TestAliasController_CreateAlias(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/aliases", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest(http.MethodPost, "/v1/aliases", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -329,7 +329,7 @@ func TestAliasController_CreateAlias_Error(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/aliases", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest(http.MethodPost, "/v1/aliases", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -371,7 +371,7 @@ func TestAliasController_CreateAlias_WithOptionalFields(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/aliases", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest(http.MethodPost, "/v1/aliases", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -393,11 +393,11 @@ func TestAliasController_ListAliases(t *testing.T) {
 		{ID: uuid.New(), Address: "a1@test.com", Enabled: true},
 		{ID: uuid.New(), Address: "a2@test.com", Enabled: false},
 	}
-	mockSvc.On("GetAll").Return(aliases, nil)
+	mockSvc.On("GetAll", mock.Anything).Return(aliases, nil)
 
 	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/aliases", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/aliases", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -429,6 +429,61 @@ func TestAliasController_ListAliases(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
+func TestAliasController_ListAliases_Filters(t *testing.T) {
+	mockSvc := new(mockAliasService)
+
+	// We expect multiple calls to GetAll with different filters
+	// 1. enabled=true
+	enabledTrue := true
+	mockSvc.On("GetAll", models.AliasFilter{Enabled: &enabledTrue}).Return([]models.Alias{}, nil).Once()
+
+	// 2. domain=cooldomain.xyz
+	domainVal := "cooldomain.xyz"
+	mockSvc.On("GetAll", models.AliasFilter{Domain: &domainVal}).Return([]models.Alias{}, nil).Once()
+
+	// 3. limit=50&offset=10
+	limitVal := 50
+	offsetVal := 10
+	mockSvc.On("GetAll", models.AliasFilter{Limit: &limitVal, Offset: &offsetVal}).Return([]models.Alias{}, nil).Once()
+
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
+
+	// Test 1: enabled=true
+	req1 := httptest.NewRequest(http.MethodGet, "/v1/aliases?enabled=true", nil)
+	resp1, err := app.Test(req1)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp1.Body.Close()
+	if resp1.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp1.StatusCode)
+	}
+
+	// Test 2: domain=cooldomain.xyz
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/aliases?domain=cooldomain.xyz", nil)
+	resp2, err := app.Test(req2)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp2.StatusCode)
+	}
+
+	// Test 3: limit=50&offset=10
+	req3 := httptest.NewRequest(http.MethodGet, "/v1/aliases?limit=50&offset=10", nil)
+	resp3, err := app.Test(req3)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp3.Body.Close()
+	if resp3.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp3.StatusCode)
+	}
+
+	mockSvc.AssertExpectations(t)
+}
+
 func TestAliasController_GetAlias(t *testing.T) {
 	mockSvc := new(mockAliasService)
 	alias := &models.Alias{ID: uuid.New(), Address: "test@test.com", Enabled: true}
@@ -436,7 +491,7 @@ func TestAliasController_GetAlias(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/aliases/some-id", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/aliases/some-id", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -463,7 +518,7 @@ func TestAliasController_UpdateAlias(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPut, "/api/aliases/some-id", bytes.NewBuffer(jsonBody))
+	req := httptest.NewRequest(http.MethodPut, "/v1/aliases/some-id", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -485,7 +540,7 @@ func TestAliasController_DeleteAlias(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/aliases/some-id", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/v1/aliases/some-id", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -511,7 +566,7 @@ func TestForwardLogController_GetForwardLogs(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/forward-logs/"+aliasID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/forward-logs/"+aliasID.String(), nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -549,7 +604,7 @@ func TestForwardLogController_GetForwardLogs_WithPagination(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/forward-logs/"+uuid.New().String()+"?limit=10&offset=20", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/forward-logs/"+uuid.New().String()+"?limit=10&offset=20", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -570,7 +625,29 @@ func TestForwardLogController_GetForwardLogs_DefaultPagination(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/forward-logs/"+uuid.New().String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/forward-logs/"+uuid.New().String(), nil)
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+
+	mockSvc.AssertExpectations(t)
+}
+
+func TestForwardLogController_GetForwardLogs_AliasEndpoint(t *testing.T) {
+	mockSvc := new(mockForwardLogService)
+	aliasID := uuid.New()
+	mockSvc.On("GetByAliasID", aliasID.String(), 10, 5).Return([]models.ForwardLog{}, nil)
+
+	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/aliases/"+aliasID.String()+"/logs?limit=10&offset=5", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -596,7 +673,7 @@ func TestStatsController_GetStats(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/stats", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/stats", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -640,7 +717,7 @@ func TestStatsController_GetStats_Error(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/api/stats", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/stats", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {

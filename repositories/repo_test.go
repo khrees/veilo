@@ -248,6 +248,7 @@ func TestAliasRepository_FindAll(t *testing.T) {
 	aliases := []*models.Alias{
 		{Address: "a1@test.com", Slug: "a1", Domain: "test.com", RealEmail: "r1@example.com", Enabled: true},
 		{Address: "a2@test.com", Slug: "a2", Domain: "test.com", RealEmail: "r2@example.com", Enabled: false},
+		{Address: "a3@other.com", Slug: "a3", Domain: "other.com", RealEmail: "r3@example.com", Enabled: true},
 	}
 
 	for _, a := range aliases {
@@ -258,13 +259,54 @@ func TestAliasRepository_FindAll(t *testing.T) {
 	}
 
 	// Find all
-	result, err := repo.FindAll()
+	result, err := repo.FindAll(models.AliasFilter{})
 	if err != nil {
 		t.Fatalf("failed to find all aliases: %v", err)
 	}
 
+	if len(result) != 3 {
+		t.Errorf("expected 3 aliases, got %d", len(result))
+	}
+
+	// Filter by Enabled = true
+	enabledTrue := true
+	result, err = repo.FindAll(models.AliasFilter{Enabled: &enabledTrue})
+	if err != nil {
+		t.Fatalf("failed to filter enabled: %v", err)
+	}
 	if len(result) != 2 {
-		t.Errorf("expected 2 aliases, got %d", len(result))
+		t.Errorf("expected 2 enabled aliases, got %d", len(result))
+	}
+
+	// Filter by Enabled = false
+	enabledFalse := false
+	result, err = repo.FindAll(models.AliasFilter{Enabled: &enabledFalse})
+	if err != nil {
+		t.Fatalf("failed to filter disabled: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 disabled alias, got %d", len(result))
+	}
+
+	// Filter by Domain = "test.com"
+	domainFilter := "test.com"
+	result, err = repo.FindAll(models.AliasFilter{Domain: &domainFilter})
+	if err != nil {
+		t.Fatalf("failed to filter domain: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 aliases for test.com, got %d", len(result))
+	}
+
+	// Test pagination: limit = 2, offset = 1
+	limitVal := 2
+	offsetVal := 1
+	result, err = repo.FindAll(models.AliasFilter{Limit: &limitVal, Offset: &offsetVal})
+	if err != nil {
+		t.Fatalf("failed to paginate: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("expected 2 paged aliases, got %d", len(result))
 	}
 }
 

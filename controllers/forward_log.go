@@ -15,9 +15,10 @@ func NewForwardLogController(forwardLogSvc services.IForwardLogService) IForward
 }
 
 func (c *forwardLogController) RegisterRoutes(app *fiber.App) {
-	api := app.Group("/api")
+	api := app.Group("/v1")
 
 	api.Get("/forward-logs/:aliasID", c.GetForwardLogs)
+	api.Get("/aliases/:aliasID/logs", c.GetForwardLogs)
 }
 
 func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {

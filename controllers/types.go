@@ -6,11 +6,12 @@ import (
 	"github.com/khrees/veilo/services"
 )
 
-// RouteDeps groups the services required to register the API routes.
+// RouteDeps groups the services and config required to register the API routes.
 type RouteDeps struct {
 	DomainSvc     services.IDomainService
 	AliasSvc      services.IAliasService
 	ForwardLogSvc services.IForwardLogService
+	WebhookSecret string
 }
 
 // IDomainController interface for domain controller

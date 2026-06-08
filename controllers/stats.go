@@ -15,7 +15,7 @@ func NewStatsController(forwardLogSvc services.IForwardLogService) IStatsControl
 }
 
 func (c *statsController) RegisterRoutes(app *fiber.App) {
-	api := app.Group("/api")
+	api := app.Group("/v1")
 
 	api.Get("/stats", c.GetStats)
 }

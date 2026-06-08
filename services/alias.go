@@ -8,7 +8,7 @@ import (
 // IAliasService interface for alias operations
 type IAliasService interface {
 	Create(input AliasCreateInput) (*models.Alias, error)
-	GetAll() ([]models.Alias, error)
+	GetAll(filter models.AliasFilter) ([]models.Alias, error)
 	GetByID(id string) (*models.Alias, error)
 	Update(id string, updates map[string]any) error
 	Delete(id string) error
@@ -57,8 +57,8 @@ func (a *aliasService) Create(input AliasCreateInput) (*models.Alias, error) {
 }
 
 // GetAll returns all aliases
-func (a *aliasService) GetAll() ([]models.Alias, error) {
-	return a.aliasRepo.FindAll()
+func (a *aliasService) GetAll(filter models.AliasFilter) ([]models.Alias, error) {
+	return a.aliasRepo.FindAll(filter)
 }
 
 // GetByID returns an alias by ID

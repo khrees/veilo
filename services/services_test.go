@@ -88,13 +88,27 @@ func (m *mockAliasRepository) Create(a *models.Alias) error {
 	return nil
 }
 
-func (m *mockAliasRepository) FindAll() ([]models.Alias, error) {
+func (m *mockAliasRepository) FindAll(filter models.AliasFilter) ([]models.Alias, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	result := make([]models.Alias, 0, len(m.aliases))
 	for _, a := range m.aliases {
+		if filter.Enabled != nil && a.Enabled != *filter.Enabled {
+			continue
+		}
+		if filter.Domain != nil && *filter.Domain != "" && a.Domain != *filter.Domain {
+			continue
+		}
 		result = append(result, *a)
+	}
+	if filter.Offset != nil && *filter.Offset >= 0 && *filter.Offset < len(result) {
+		result = result[*filter.Offset:]
+	} else if filter.Offset != nil && *filter.Offset >= len(result) {
+		result = []models.Alias{}
+	}
+	if filter.Limit != nil && *filter.Limit >= 0 && *filter.Limit < len(result) {
+		result = result[:*filter.Limit]
 	}
 	return result, nil
 }
@@ -303,7 +317,7 @@ func TestAliasService_GetAll(t *testing.T) {
 	}
 	svc := services.NewAliasService(mockRepo)
 
-	aliases, err := svc.GetAll()
+	aliases, err := svc.GetAll(models.AliasFilter{})
 	if err != nil {
 		t.Fatalf("failed to get all aliases: %v", err)
 	}
@@ -463,7 +477,7 @@ func TestAliasService_ErrorHandling(t *testing.T) {
 	}
 
 	// Test GetAll with error
-	_, err = svc.GetAll()
+	_, err = svc.GetAll(models.AliasFilter{})
 	if !errors.Is(err, errTest) {
 		t.Errorf("expected error '%v', got '%v'", errTest, err)
 	}

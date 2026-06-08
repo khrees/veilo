@@ -8,7 +8,7 @@ import (
 
 type AliasRepository interface {
 	Create(a *models.Alias) error
-	FindAll() ([]models.Alias, error)
+	FindAll(filter models.AliasFilter) ([]models.Alias, error)
 	FindByID(id string) (*models.Alias, error)
 	Update(id string, updates map[string]any) error
 	Delete(id string) error
@@ -26,9 +26,22 @@ func (r *aliasRepository) Create(a *models.Alias) error {
 	return r.db.Create(a).Error
 }
 
-func (r *aliasRepository) FindAll() ([]models.Alias, error) {
+func (r *aliasRepository) FindAll(filter models.AliasFilter) ([]models.Alias, error) {
 	var aliases []models.Alias
-	return aliases, r.db.Order("created_at DESC").Find(&aliases).Error
+	query := r.db.Model(&models.Alias{}).Order("created_at DESC")
+	if filter.Enabled != nil {
+		query = query.Where("enabled = ?", *filter.Enabled)
+	}
+	if filter.Domain != nil && *filter.Domain != "" {
+		query = query.Where("domain = ?", *filter.Domain)
+	}
+	if filter.Limit != nil {
+		query = query.Limit(*filter.Limit)
+	}
+	if filter.Offset != nil {
+		query = query.Offset(*filter.Offset)
+	}
+	return aliases, query.Find(&aliases).Error
 }
 
 func (r *aliasRepository) FindByID(id string) (*models.Alias, error) {

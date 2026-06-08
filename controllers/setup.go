@@ -15,4 +15,7 @@ func SetupRoutes(app *fiber.App, deps RouteDeps) {
 
 	statsController := NewStatsController(deps.ForwardLogSvc)
 	statsController.RegisterRoutes(app)
+
+	webhookController := NewWebhookController(deps.WebhookSecret)
+	webhookController.RegisterRoutes(app)
 }

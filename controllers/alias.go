@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"github.com/gofiber/fiber/v3"
+	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/services"
 )
 
@@ -15,7 +16,7 @@ func NewAliasController(aliasSvc services.IAliasService) IAliasController {
 }
 
 func (c *aliasController) RegisterRoutes(app *fiber.App) {
-	api := app.Group("/api")
+	api := app.Group("/v1")
 
 	api.Post("/aliases", c.CreateAlias)
 	api.Get("/aliases", c.ListAliases)
@@ -58,7 +59,34 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 }
 
 func (c *aliasController) ListAliases(ctx fiber.Ctx) error {
-	aliases, err := c.aliasSvc.GetAll()
+	var filter models.AliasFilter
+
+	if enabledStr := ctx.Query("enabled"); enabledStr != "" {
+		switch enabledStr {
+		case "true":
+			val := true
+			filter.Enabled = &val
+		case "false":
+			val := false
+			filter.Enabled = &val
+		}
+	}
+
+	if domainStr := ctx.Query("domain"); domainStr != "" {
+		filter.Domain = &domainStr
+	}
+
+	if limitStr := ctx.Query("limit"); limitStr != "" {
+		val := ParseInt(limitStr)
+		filter.Limit = &val
+	}
+
+	if offsetStr := ctx.Query("offset"); offsetStr != "" {
+		val := ParseInt(offsetStr)
+		filter.Offset = &val
+	}
+
+	aliases, err := c.aliasSvc.GetAll(filter)
 	if err != nil {
 		return err
 	}

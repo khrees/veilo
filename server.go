@@ -17,7 +17,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/google/uuid"
-	routes "github.com/khrees/veilo/controllers"
+	"github.com/khrees/veilo/controllers"
 	"gorm.io/gorm"
 )
 
@@ -27,7 +27,7 @@ type server struct {
 	shutdownTimeout time.Duration
 }
 
-func NewServer(port string, deps routes.RouteDeps) *server {
+func NewServer(port string, deps controllers.RouteDeps) *server {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
@@ -37,26 +37,26 @@ func NewServer(port string, deps routes.RouteDeps) *server {
 
 			// Check if it's a record not found error
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return routes.SendError(ctx, fiber.StatusNotFound, "resource not found", nil)
+				return controllers.SendError(ctx, fiber.StatusNotFound, "resource not found", nil)
 			}
 
 			// Check for unique constraint / duplicate key errors
 			errStr := strings.ToLower(err.Error())
 			if strings.Contains(errStr, "unique") || strings.Contains(errStr, "duplicate") {
-				return routes.SendError(ctx, fiber.StatusConflict, "resource already exists", nil)
+				return controllers.SendError(ctx, fiber.StatusConflict, "resource already exists", nil)
 			}
 
 			// Retrieve the custom status code if it's a *fiber.Error (e.g. validation errors)
 			var e *fiber.Error
 			if errors.As(err, &e) {
-				return routes.SendError(ctx, e.Code, e.Message, nil)
+				return controllers.SendError(ctx, e.Code, e.Message, nil)
 			}
 
 			// Log the actual raw database or system error internally
 			log.Errorf("Internal system error: %v", err)
 
 			// Return a generic internal error message to the client
-			return routes.SendError(ctx, code, message, nil)
+			return controllers.SendError(ctx, code, message, nil)
 		},
 	})
 	registerMiddleware(app)
@@ -120,10 +120,10 @@ func registerMiddleware(app *fiber.App) {
 	}))
 }
 
-func registerRoutes(app *fiber.App, deps routes.RouteDeps) {
+func registerRoutes(app *fiber.App, deps controllers.RouteDeps) {
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Hello, World 👋!")
 	})
 
-	routes.SetupRoutes(app, deps)
+	controllers.SetupRoutes(app, deps)
 }

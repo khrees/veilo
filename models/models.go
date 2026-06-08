@@ -32,10 +32,17 @@ type Alias struct {
 	Domain       string     `json:"domain" gorm:"type:text;not null"`
 	RealEmail    string     `json:"real_email" gorm:"type:text;not null"`
 	Label        *string    `json:"label,omitempty" gorm:"type:text"`
-	Enabled      bool       `json:"enabled" gorm:"not null;default:true"`
+	Enabled      bool       `json:"enabled" gorm:"not null"`
 	ForwardCount int        `json:"forward_count" gorm:"not null;default:0"`
 	CreatedAt    time.Time  `json:"created_at" gorm:"not null;default:now()"`
 	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
+}
+
+type AliasFilter struct {
+	Enabled *bool   `json:"enabled,omitempty"`
+	Domain  *string `json:"domain,omitempty"`
+	Limit   *int    `json:"limit,omitempty"`
+	Offset  *int    `json:"offset,omitempty"`
 }
 
 func (Alias) TableName() string { return "aliases" }

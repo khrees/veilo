@@ -3,7 +3,7 @@ package controllers_test
 import (
 	"testing"
 
-	routes "github.com/khrees/veilo/controllers"
+	"github.com/khrees/veilo/controllers"
 )
 
 // Test the parseInt helper function (it's not exported, so we test it via the routes package)
@@ -26,7 +26,7 @@ func TestParseInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := routes.ParseInt(tt.input)
+			result := controllers.ParseInt(tt.input)
 			if result != tt.expected {
 				t.Errorf("parseInt(%q) = %d; want %d", tt.input, result, tt.expected)
 			}

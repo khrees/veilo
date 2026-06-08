@@ -15,7 +15,7 @@ func NewDomainController(domainSvc services.IDomainService) IDomainController {
 }
 
 func (c *domainController) RegisterRoutes(app *fiber.App) {
-	api := app.Group("/api")
+	api := app.Group("/v1")
 
 	api.Post("/domains", c.RegisterDomain)
 	api.Get("/domains", c.ListDomains)
