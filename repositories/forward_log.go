@@ -6,6 +6,7 @@ import (
 )
 
 type ForwardLogRepository interface {
+	Create(f *models.ForwardLog) error
 	FindByAliasID(aliasID string, limit, offset int) ([]models.ForwardLog, error)
 	GetStats() (*Stats, error)
 }
@@ -16,6 +17,10 @@ type forwardLogRepository struct {
 
 func NewForwardLogRepository(db *gorm.DB) ForwardLogRepository {
 	return &forwardLogRepository{db: db}
+}
+
+func (r *forwardLogRepository) Create(f *models.ForwardLog) error {
+	return r.db.Create(f).Error
 }
 
 func (r *forwardLogRepository) FindByAliasID(aliasID string, limit, offset int) ([]models.ForwardLog, error) {

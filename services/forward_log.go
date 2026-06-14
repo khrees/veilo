@@ -5,6 +5,7 @@ import "github.com/khrees/veilo/repositories"
 
 // IForwardLogService interface for forward log operations
 type IForwardLogService interface {
+	Create(f *models.ForwardLog) error
 	GetByAliasID(aliasID string, limit, offset int) ([]models.ForwardLog, error)
 	GetStats() (*repositories.Stats, error)
 }
@@ -19,6 +20,10 @@ func NewForwardLogService(forwardLogRepo repositories.ForwardLogRepository) IFor
 	return &forwardLogService{
 		forwardLogRepo: forwardLogRepo,
 	}
+}
+
+func (f *forwardLogService) Create(log *models.ForwardLog) error {
+	return f.forwardLogRepo.Create(log)
 }
 
 // GetByAliasID returns forward logs for a specific alias

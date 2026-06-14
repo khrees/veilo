@@ -12,11 +12,14 @@ import (
 	"github.com/khrees/veilo/repositories"
 	"github.com/khrees/veilo/controllers"
 	"github.com/khrees/veilo/services"
+	"github.com/resend/resend-go/v3"
 )
 
 type Config struct {
-	Port          string `env:"PORT"`
-	WebhookSecret string `env:"WEBHOOK_SECRET,required"`
+	Port              string `env:"PORT"`
+	WebhookSecret     string `env:"WEBHOOK_SECRET,required"`
+	ResendAPIKey      string `env:"RESEND_API_KEY"`
+	ReplyTokenTTLDays int    `env:"REPLY_TOKEN_TTL_DAYS" envDefault:"90"`
 }
 
 func main() {
@@ -55,16 +58,21 @@ func main() {
 	domainRepo := repositories.NewDomainRepository(db)
 	aliasRepo := repositories.NewAliasRepository(db)
 	forwardLogRepo := repositories.NewForwardLogRepository(db)
+	replyTokenRepo := repositories.NewReplyTokenRepository(db)
 
 	// Service Layer
 	domainSvc := services.NewDomainService(domainRepo)
 	aliasSvc := services.NewAliasService(aliasRepo)
 	forwardLogSvc := services.NewForwardLogService(forwardLogRepo)
 
+	resendClient := resend.NewClient(cfg.ResendAPIKey)
+	webhookSvc := services.NewWebhookService(aliasRepo, forwardLogRepo, replyTokenRepo, resendClient, cfg.ReplyTokenTTLDays)
+
 	server := NewServer(cfg.Port, controllers.RouteDeps{
 		DomainSvc:     domainSvc,
 		AliasSvc:      aliasSvc,
 		ForwardLogSvc: forwardLogSvc,
+		WebhookSvc:    webhookSvc,
 		WebhookSecret: cfg.WebhookSecret,
 	})
 	log.Fatal(server.Start())

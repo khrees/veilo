@@ -6,6 +6,16 @@ import (
 	"github.com/khrees/veilo/services"
 )
 
+// IAliasController interface for alias controller
+type IAliasController interface {
+	RegisterRoutes(app *fiber.App)
+	CreateAlias(ctx fiber.Ctx) error
+	ListAliases(ctx fiber.Ctx) error
+	GetAlias(ctx fiber.Ctx) error
+	UpdateAlias(ctx fiber.Ctx) error
+	DeleteAlias(ctx fiber.Ctx) error
+}
+
 type aliasController struct {
 	aliasSvc services.IAliasService
 }

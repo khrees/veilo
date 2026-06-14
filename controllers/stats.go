@@ -5,6 +5,12 @@ import (
 	"github.com/khrees/veilo/services"
 )
 
+// IStatsController interface for stats controller
+type IStatsController interface {
+	RegisterRoutes(app *fiber.App)
+	GetStats(ctx fiber.Ctx) error
+}
+
 type statsController struct {
 	forwardLogSvc services.IForwardLogService
 }

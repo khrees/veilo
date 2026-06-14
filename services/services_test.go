@@ -152,6 +152,18 @@ func (m *mockAliasRepository) Delete(id string) error {
 	return nil
 }
 
+func (m *mockAliasRepository) FindByAddress(address string) (*models.Alias, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	for _, a := range m.aliases {
+		if a.Address == address {
+			return a, nil
+		}
+	}
+	return nil, errors.New("alias not found")
+}
+
 // Mock ForwardLog Repository
 type mockForwardLogRepository struct {
 	logs  map[string]*models.ForwardLog
@@ -177,6 +189,18 @@ func (m *mockForwardLogRepository) GetStats() (*repositories.Stats, error) {
 		return nil, m.err
 	}
 	return m.stats, nil
+}
+
+func (m *mockForwardLogRepository) Create(f *models.ForwardLog) error {
+	if m.err != nil {
+		return m.err
+	}
+	f.ID = uuid.New()
+	if m.logs == nil {
+		m.logs = make(map[string]*models.ForwardLog)
+	}
+	m.logs[f.ID.String()] = f
+	return nil
 }
 
 func TestDomainService_Register(t *testing.T) {

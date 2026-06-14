@@ -5,6 +5,15 @@ import (
 	"github.com/khrees/veilo/services"
 )
 
+// IDomainController interface for domain controller
+type IDomainController interface {
+	RegisterRoutes(app *fiber.App)
+	RegisterDomain(ctx fiber.Ctx) error
+	ListDomains(ctx fiber.Ctx) error
+	GetDomain(ctx fiber.Ctx) error
+	RemoveDomain(ctx fiber.Ctx) error
+}
+
 type domainController struct {
 	domainSvc services.IDomainService
 }

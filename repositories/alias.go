@@ -10,6 +10,7 @@ type AliasRepository interface {
 	Create(a *models.Alias) error
 	FindAll(filter models.AliasFilter) ([]models.Alias, error)
 	FindByID(id string) (*models.Alias, error)
+	FindByAddress(address string) (*models.Alias, error)
 	Update(id string, updates map[string]any) error
 	Delete(id string) error
 }
@@ -47,6 +48,11 @@ func (r *aliasRepository) FindAll(filter models.AliasFilter) ([]models.Alias, er
 func (r *aliasRepository) FindByID(id string) (*models.Alias, error) {
 	var alias models.Alias
 	return &alias, r.db.First(&alias, "id = ?", id).Error
+}
+
+func (r *aliasRepository) FindByAddress(address string) (*models.Alias, error) {
+	var alias models.Alias
+	return &alias, r.db.First(&alias, "address = ?", address).Error
 }
 
 func (r *aliasRepository) Update(id string, updates map[string]any) error {

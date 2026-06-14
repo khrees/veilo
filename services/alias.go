@@ -10,6 +10,7 @@ type IAliasService interface {
 	Create(input AliasCreateInput) (*models.Alias, error)
 	GetAll(filter models.AliasFilter) ([]models.Alias, error)
 	GetByID(id string) (*models.Alias, error)
+	FindByAddress(address string) (*models.Alias, error)
 	Update(id string, updates map[string]any) error
 	Delete(id string) error
 }
@@ -64,6 +65,11 @@ func (a *aliasService) GetAll(filter models.AliasFilter) ([]models.Alias, error)
 // GetByID returns an alias by ID
 func (a *aliasService) GetByID(id string) (*models.Alias, error) {
 	return a.aliasRepo.FindByID(id)
+}
+
+// FindByAddress returns an alias by address
+func (a *aliasService) FindByAddress(address string) (*models.Alias, error) {
+	return a.aliasRepo.FindByAddress(address)
 }
 
 // Update modifies an existing alias

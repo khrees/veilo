@@ -95,6 +95,14 @@ func (m *mockAliasService) Delete(id string) error {
 	return args.Error(0)
 }
 
+func (m *mockAliasService) FindByAddress(address string) (*models.Alias, error) {
+	args := m.Called(address)
+	if arg0 := args.Get(0); arg0 != nil {
+		return arg0.(*models.Alias), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 type mockForwardLogService struct {
 	mock.Mock
 }
@@ -113,6 +121,11 @@ func (m *mockForwardLogService) GetStats() (*repositories.Stats, error) {
 		return arg0.(*repositories.Stats), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func (m *mockForwardLogService) Create(f *models.ForwardLog) error {
+	args := m.Called(f)
+	return args.Error(0)
 }
 
 // Helper to create test app

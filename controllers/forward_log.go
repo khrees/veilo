@@ -5,6 +5,12 @@ import (
 	"github.com/khrees/veilo/services"
 )
 
+// IForwardLogController interface for forward log controller
+type IForwardLogController interface {
+	RegisterRoutes(app *fiber.App)
+	GetForwardLogs(ctx fiber.Ctx) error
+}
+
 type forwardLogController struct {
 	forwardLogSvc services.IForwardLogService
 }

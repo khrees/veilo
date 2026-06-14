@@ -1,8 +1,11 @@
 package services
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/repositories"
 )
 
 // IReplyTokenService interface for reply token operations
@@ -18,33 +21,57 @@ type ReplyTokenCreateInput struct {
 	OriginalSender  string
 	OriginalSubject string
 	ThreadID        string
-	ExpiresAt       int
+	ExpiresAt       time.Time
 }
 
 // replyTokenService implements IReplyTokenService
 type replyTokenService struct {
-	// replyTokenRepo repositories.ReplyTokenRepository
+	replyTokenRepo repositories.ReplyTokenRepository
 }
 
 // NewReplyTokenService will instantiate ReplyTokenService
-func NewReplyTokenService() IReplyTokenService {
-	return &replyTokenService{}
+func NewReplyTokenService(replyTokenRepo repositories.ReplyTokenRepository) IReplyTokenService {
+	return &replyTokenService{
+		replyTokenRepo: replyTokenRepo,
+	}
 }
 
 // Create creates a new reply token
 func (r *replyTokenService) Create(input ReplyTokenCreateInput) (*models.ReplyToken, error) {
-	// TODO: Implement token creation with expiration
-	return nil, nil
+	token := uuid.NewString()
+
+	var subject *string
+	if input.OriginalSubject != "" {
+		subject = &input.OriginalSubject
+	}
+	var threadID *string
+	if input.ThreadID != "" {
+		threadID = &input.ThreadID
+	}
+
+	replyToken := &models.ReplyToken{
+		Token:           token,
+		AliasID:         input.AliasID,
+		OriginalSender:  input.OriginalSender,
+		OriginalSubject: subject,
+		ThreadID:        threadID,
+		ExpiresAt:       input.ExpiresAt,
+	}
+
+	err := r.replyTokenRepo.Create(replyToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return replyToken, nil
 }
 
 // Find finds a reply token
 func (r *replyTokenService) Find(token string) (*models.ReplyToken, error) {
-	// TODO: Implement token lookup
-	return nil, nil
+	return r.replyTokenRepo.FindByToken(token)
 }
 
 // Delete deletes a reply token
 func (r *replyTokenService) Delete(token string) error {
-	// TODO: Implement token deletion
-	return nil
+	return r.replyTokenRepo.Delete(token)
 }

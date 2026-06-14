@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/khrees/veilo/services"
 	svix "github.com/svix/svix-webhooks/go"
 )
 
@@ -92,17 +93,20 @@ type EmailBounced struct {
 
 type webhookController struct {
 	webhookSecret string
+	webhookSvc    services.IWebhookService
 }
 
 // NewWebhookController creates a new webhook controller.
-// webhookSecret is the Resend/Svix signing secret (e.g. "whsec_...").
-func NewWebhookController(webhookSecret string) *webhookController {
-	return &webhookController{webhookSecret: webhookSecret}
+func NewWebhookController(deps RouteDeps) *webhookController {
+	return &webhookController{
+		webhookSecret: deps.WebhookSecret,
+		webhookSvc:    deps.WebhookSvc,
+	}
 }
 
-// RegisterRoutes registers the webhook route.
+// RegisterRoutes registers the webhook routes.
 func (c *webhookController) RegisterRoutes(app *fiber.App) {
-	app.Post("/v1/webhooks/resend", c.HandleInboundWebhook)
+	app.Post("/webhook/inbound", c.HandleInboundWebhook)
 }
 
 // HandleInboundWebhook verifies the Svix signature and processes Resend webhook events.
@@ -135,22 +139,37 @@ func (c *webhookController) HandleInboundWebhook(ctx fiber.Ctx) error {
 
 	switch webhook.Type {
 	case "email.received":
-		c.handleEmailReceived(webhook.Data.(EmailReceived))
+		emailData, ok := webhook.Data.(EmailReceived)
+		if !ok {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid email.received data")
+		}
+
+		input := services.EmailReceivedInput{
+			EmailID:   emailData.EmailID,
+			From:      emailData.From,
+			To:        emailData.To,
+			MessageID: emailData.MessageID,
+			Subject:   emailData.Subject,
+		}
+
+		err = c.webhookSvc.ProcessEmailReceived(ctx.Context(), input)
+		if err != nil {
+			log.Errorf("failed to process inbound email webhook: %v", err)
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		return ctx.SendStatus(fiber.StatusOK)
+
 	case "email.bounced":
-		c.handleEmailBounced(webhook.Data.(EmailBounced))
+		emailBounced, ok := webhook.Data.(EmailBounced)
+		if !ok {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid email.bounced data")
+		}
+		log.Infof("Received bounce webhook: %s", emailBounced.EmailID)
+		return ctx.SendStatus(fiber.StatusOK)
+
 	default:
 		log.Infof("Received unhandled webhook type: %s", webhook.Type)
+		return ctx.SendStatus(fiber.StatusOK)
 	}
-
-	return ctx.SendStatus(fiber.StatusOK)
-}
-
-func (c *webhookController) handleEmailReceived(data EmailReceived) {
-	log.Infof("Received email webhook: %s", data.EmailID)
-
-}
-
-func (c *webhookController) handleEmailBounced(data EmailBounced) {
-	log.Infof("Received bounce webhook: %s", data.EmailID)
-
 }
