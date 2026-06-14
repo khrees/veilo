@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/mail"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/khrees/veilo/models"
@@ -41,6 +42,8 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		DisplayName *string `json:"display_name,omitempty"`
 		Label       *string `json:"label,omitempty"`
 		Enabled     *bool   `json:"enabled,omitempty"`
+		ExpiresAt   *string `json:"expires_at,omitempty"`
+		MaxForwards *int    `json:"max_forwards,omitempty"`
 	}
 	if err := ctx.Bind().Body(&body); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
@@ -68,6 +71,15 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		enabled = *body.Enabled
 	}
 
+	var expiresAt *time.Time
+	if body.ExpiresAt != nil && *body.ExpiresAt != "" {
+		t, err := time.Parse(time.RFC3339, *body.ExpiresAt)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid expires_at format (RFC3339 required)")
+		}
+		expiresAt = &t
+	}
+
 	alias, err := c.aliasSvc.Create(services.AliasCreateInput{
 		Address:     body.Address,
 		Slug:        body.Slug,
@@ -76,6 +88,8 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		DisplayName: body.DisplayName,
 		Label:       body.Label,
 		Enabled:     enabled,
+		ExpiresAt:   expiresAt,
+		MaxForwards: body.MaxForwards,
 	})
 	if err != nil {
 		return err
@@ -147,6 +161,8 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 		DisplayName *string `json:"display_name,omitempty"`
 		Label       *string `json:"label,omitempty"`
 		Enabled     *bool   `json:"enabled,omitempty"`
+		ExpiresAt   *string `json:"expires_at,omitempty"`
+		MaxForwards *int    `json:"max_forwards,omitempty"`
 	}
 
 	if err := ctx.Bind().Body(&body); err != nil {
@@ -176,6 +192,24 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 	}
 	if body.Enabled != nil {
 		updates["enabled"] = *body.Enabled
+	}
+	if body.ExpiresAt != nil {
+		if *body.ExpiresAt == "" {
+			updates["expires_at"] = nil
+		} else {
+			t, err := time.Parse(time.RFC3339, *body.ExpiresAt)
+			if err != nil {
+				return fiber.NewError(fiber.StatusBadRequest, "invalid expires_at format (RFC3339 required)")
+			}
+			updates["expires_at"] = t
+		}
+	}
+	if body.MaxForwards != nil {
+		if *body.MaxForwards <= 0 {
+			updates["max_forwards"] = nil
+		} else {
+			updates["max_forwards"] = *body.MaxForwards
+		}
 	}
 
 	if err := c.aliasSvc.Update(alias.ID.String(), updates); err != nil {

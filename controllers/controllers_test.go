@@ -112,6 +112,11 @@ func (m *mockAliasService) FindByAddress(address string) (*models.Alias, error) 
 	return nil, args.Error(1)
 }
 
+func (m *mockAliasService) DisableExpired(now time.Time) error {
+	args := m.Called(now)
+	return args.Error(0)
+}
+
 type mockForwardLogService struct {
 	mock.Mock
 }

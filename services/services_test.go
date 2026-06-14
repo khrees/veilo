@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
@@ -171,6 +172,18 @@ func (m *mockAliasRepository) FindByAddress(address string) (*models.Alias, erro
 		}
 	}
 	return nil, errors.New("alias not found")
+}
+
+func (m *mockAliasRepository) DisableExpired(now time.Time) error {
+	if m.err != nil {
+		return m.err
+	}
+	for _, a := range m.aliases {
+		if a.ExpiresAt != nil && a.ExpiresAt.Before(now) {
+			a.Enabled = false
+		}
+	}
+	return nil
 }
 
 // Mock ForwardLog Repository

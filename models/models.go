@@ -37,6 +37,8 @@ type Alias struct {
 	ForwardCount int        `json:"forward_count" gorm:"not null;default:0"`
 	CreatedAt    time.Time  `json:"created_at" gorm:"not null;default:now()"`
 	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	MaxForwards  *int       `json:"max_forwards,omitempty"`
 }
 
 type AliasFilter struct {
@@ -73,8 +75,9 @@ type ForwardLog struct {
 	Direction string    `json:"direction" gorm:"type:text;not null;check:direction IN ('inbound','reply')"`
 	Sender    *string   `json:"sender,omitempty" gorm:"type:text"`
 	Subject   *string   `json:"subject,omitempty" gorm:"type:text"`
-	Status    string    `json:"status" gorm:"type:text;not null;check:status IN ('delivered','blocked','bounced')"`
-	CreatedAt time.Time `json:"created_at" gorm:"not null;default:now();index"`
+	Status          string    `json:"status" gorm:"type:text;not null;check:status IN ('delivered','blocked','bounced')"`
+	TrackersBlocked int       `json:"trackers_blocked" gorm:"not null;default:0"`
+	CreatedAt       time.Time `json:"created_at" gorm:"not null;default:now();index"`
 }
 
 func (ForwardLog) TableName() string { return "forward_logs" }
@@ -87,8 +90,9 @@ func (f *ForwardLog) BeforeCreate(tx *gorm.DB) error {
 }
 
 type Stats struct {
-	TotalAliases   int64 `json:"total_aliases"`
-	TotalForwarded int64 `json:"total_forwarded"`
-	TotalBlocked   int64 `json:"total_blocked"`
+	TotalAliases         int64 `json:"total_aliases"`
+	TotalForwarded       int64 `json:"total_forwarded"`
+	TotalBlocked         int64 `json:"total_blocked"`
+	TotalTrackersBlocked int64 `json:"total_trackers_blocked"`
 }
 

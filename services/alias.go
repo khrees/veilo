@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/repositories"
@@ -18,6 +19,7 @@ type AliasService interface {
 	FindByAddress(address string) (*models.Alias, error)
 	Update(id string, updates map[string]any) error
 	Delete(id string) error
+	DisableExpired(now time.Time) error
 }
 
 // AliasCreateInput groups the values needed to create an alias.
@@ -29,6 +31,8 @@ type AliasCreateInput struct {
 	DisplayName *string
 	Label       *string
 	Enabled     bool
+	ExpiresAt   *time.Time
+	MaxForwards *int
 }
 
 var adjectives = []string{
@@ -70,6 +74,7 @@ func GenerateSlug() string {
 // allowedUpdateFields is the whitelist of fields that can be updated via the API.
 var allowedUpdateFields = map[string]bool{
 	"address": true, "real_email": true, "display_name": true, "label": true, "enabled": true,
+	"expires_at": true, "max_forwards": true,
 }
 
 // aliasService implements AliasService
@@ -109,6 +114,8 @@ func (a *aliasService) Create(input AliasCreateInput) (*models.Alias, error) {
 		Label:        input.Label,
 		Enabled:      input.Enabled,
 		ForwardCount: 0,
+		ExpiresAt:    input.ExpiresAt,
+		MaxForwards:  input.MaxForwards,
 	}
 
 	err := a.aliasRepo.Create(alias)
@@ -151,4 +158,8 @@ func (a *aliasService) Update(id string, updates map[string]any) error {
 // Delete removes an alias
 func (a *aliasService) Delete(id string) error {
 	return a.aliasRepo.Delete(id)
+}
+
+func (a *aliasService) DisableExpired(now time.Time) error {
+	return a.aliasRepo.DisableExpired(now)
 }

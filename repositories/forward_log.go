@@ -51,6 +51,12 @@ func (r *forwardLogRepository) GetStats() (*models.Stats, error) {
 		return nil, err
 	}
 
+	if err := r.db.Model(&models.ForwardLog{}).
+		Select("COALESCE(SUM(trackers_blocked), 0)").
+		Row().Scan(&s.TotalTrackersBlocked); err != nil {
+		return nil, err
+	}
+
 	return &s, nil
 }
 

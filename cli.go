@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -69,6 +70,8 @@ func init() {
 	createCmd.Flags().String("email", "", "Real destination email (fallback to config default-email)")
 	createCmd.Flags().String("label", "", "Optional label for the alias")
 	createCmd.Flags().Bool("copy", false, "Copy created address to clipboard")
+	createCmd.Flags().String("expires-at", "", "Alias expiration duration (e.g., 24h, 30d) or RFC3339 timestamp")
+	createCmd.Flags().Int("max-forwards", 0, "Self-destruct after N forwarded emails")
 }
 
 func getConfigPath() (string, error) {
@@ -81,6 +84,30 @@ func getConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, "config.json"), nil
+}
+
+func parseExpiration(val string) (string, error) {
+	if val == "" {
+		return "", nil
+	}
+	if strings.HasSuffix(val, "d") {
+		daysStr := strings.TrimSuffix(val, "d")
+		days, err := strconv.Atoi(daysStr)
+		if err == nil {
+			t := time.Now().AddDate(0, 0, days)
+			return t.Format(time.RFC3339), nil
+		}
+	}
+	dur, err := time.ParseDuration(val)
+	if err == nil {
+		t := time.Now().Add(dur)
+		return t.Format(time.RFC3339), nil
+	}
+	t, err := time.Parse(time.RFC3339, val)
+	if err == nil {
+		return t.Format(time.RFC3339), nil
+	}
+	return "", fmt.Errorf("invalid expiration format: use duration (e.g. 24h, 7d) or RFC3339 date")
 }
 
 func loadConfig() (*CLIConfig, error) {
@@ -258,6 +285,8 @@ var createCmd = &cobra.Command{
 		email, _ := cmd.Flags().GetString("email")
 		label, _ := cmd.Flags().GetString("label")
 		copyToClipboard, _ := cmd.Flags().GetBool("copy")
+		expiresAtVal, _ := cmd.Flags().GetString("expires-at")
+		maxForwards, _ := cmd.Flags().GetInt("max-forwards")
 
 		cfg, err := loadConfig()
 		if err != nil {
@@ -275,6 +304,11 @@ var createCmd = &cobra.Command{
 			return errors.New("domain and email are required. Specify via flags (--domain, --email) or set defaults in config:\n  veilo config set default-domain <domain>\n  veilo config set default-email <email>")
 		}
 
+		expiresAt, err := parseExpiration(expiresAtVal)
+		if err != nil {
+			return err
+		}
+
 		body := map[string]any{
 			"slug":       slug,
 			"domain":     domain,
@@ -282,6 +316,12 @@ var createCmd = &cobra.Command{
 		}
 		if label != "" {
 			body["label"] = label
+		}
+		if expiresAt != "" {
+			body["expires_at"] = expiresAt
+		}
+		if maxForwards > 0 {
+			body["max_forwards"] = maxForwards
 		}
 
 		var alias models.Alias
@@ -345,6 +385,16 @@ var getCmd = &cobra.Command{
 			lastUsed = alias.LastUsedAt.Format(time.RFC1123)
 		}
 		fmt.Fprintf(w, "  LAST USED:\t%s\n", lastUsed)
+		expiresAtStr := "never"
+		if alias.ExpiresAt != nil {
+			expiresAtStr = alias.ExpiresAt.Format(time.RFC1123)
+		}
+		fmt.Fprintf(w, "  EXPIRES AT:\t%s\n", expiresAtStr)
+		maxForwardsStr := "unlimited"
+		if alias.MaxForwards != nil {
+			maxForwardsStr = fmt.Sprintf("%d", *alias.MaxForwards)
+		}
+		fmt.Fprintf(w, "  MAX FORWARDS:\t%s\n", maxForwardsStr)
 		fmt.Fprintf(w, "  CREATED:\t%s\n", alias.CreatedAt.Format(time.RFC1123))
 		w.Flush()
 		return nil
@@ -415,6 +465,7 @@ var statsCmd = &cobra.Command{
 		fmt.Fprintf(w, "  TOTAL ALIASES:\t%d\n", stats.TotalAliases)
 		fmt.Fprintf(w, "  TOTAL FORWARDED:\t%d\n", stats.TotalForwarded)
 		fmt.Fprintf(w, "  TOTAL BLOCKED:\t%d\n", stats.TotalBlocked)
+		fmt.Fprintf(w, "  TOTAL TRACKERS BLOCKED:\t%d\n", stats.TotalTrackersBlocked)
 		w.Flush()
 		return nil
 	},
@@ -445,7 +496,7 @@ var logsCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "  TIMESTAMP\tDIRECTION\tSENDER\tSUBJECT\tSTATUS")
+		fmt.Fprintln(w, "  TIMESTAMP\tDIRECTION\tSENDER\tSUBJECT\tSTATUS\tTRACKERS BLOCKED")
 		for _, l := range logs {
 			sender := "—"
 			if l.Sender != nil {
@@ -455,12 +506,13 @@ var logsCmd = &cobra.Command{
 			if l.Subject != nil {
 				subject = *l.Subject
 			}
-			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\n",
+			fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%s\t%d\n",
 				l.CreatedAt.Format("2006-01-02 15:04:02"),
 				l.Direction,
 				sender,
 				subject,
 				l.Status,
+				l.TrackersBlocked,
 			)
 		}
 		w.Flush()

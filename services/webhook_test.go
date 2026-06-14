@@ -60,6 +60,11 @@ func (m *mockAliasRepo) Delete(id string) error {
 	return args.Error(0)
 }
 
+func (m *mockAliasRepo) DisableExpired(now time.Time) error {
+	args := m.Called(now)
+	return args.Error(0)
+}
+
 type mockForwardLogRepo struct {
 	mock.Mock
 }

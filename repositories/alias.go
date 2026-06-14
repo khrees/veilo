@@ -2,6 +2,8 @@
 package repositories
 
 import (
+	"time"
+
 	"github.com/khrees/veilo/models"
 	"gorm.io/gorm"
 )
@@ -13,6 +15,7 @@ type AliasRepository interface {
 	FindByAddress(address string) (*models.Alias, error)
 	Update(id string, updates map[string]any) error
 	Delete(id string) error
+	DisableExpired(now time.Time) error
 }
 
 type aliasRepository struct {
@@ -61,4 +64,10 @@ func (r *aliasRepository) Update(id string, updates map[string]any) error {
 
 func (r *aliasRepository) Delete(id string) error {
 	return r.db.Delete(&models.Alias{}, "id = ?", id).Error
+}
+
+func (r *aliasRepository) DisableExpired(now time.Time) error {
+	return r.db.Model(&models.Alias{}).
+		Where("expires_at IS NOT NULL AND expires_at < ? AND enabled = ?", now, true).
+		Update("enabled", false).Error
 }

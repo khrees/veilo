@@ -13,6 +13,8 @@ Veilo is a self-hosted, lightweight, lightning-fast email alias forwarding and r
 *   **📨 Ghost Forwarding**: Inbound emails sent to your aliases are instantly forwarded to your real email inbox.
 *   **💬 Ghost Replying**: Reply directly to any forwarded email from your personal inbox. Veilo rewrites headers and forwards it back to the original sender utilizing secure reply tokens.
 *   **🕵️ Background Verification Worker**: A built-in ticker checks unverified domains against Resend's API and activates them as soon as DNS propagates.
+*   **🛡️ Tracker Stripper**: Automatically strips tracking pixels (1x1 tracking images or known tracker domains like Mailchimp and Sendgrid) from incoming email HTML bodies, showing a "trackers blocked" count.
+*   **⏳ Self-Destructing Aliases**: Create temporary aliases that automatically disable themselves after a friendly duration (e.g., `24h`, `7d`) or after forwarding a maximum number of emails.
 *   **⚡ Built with Go & Fiber**: Blazing fast performance with minimal overhead.
 
 ---
@@ -118,6 +120,76 @@ air
 To run directly with Go:
 ```bash
 go run .
+```
+
+---
+
+## 💻 Command Line Interface (CLI)
+
+Veilo includes a unified CLI to manage your email shield directly from the terminal. The single compiled binary `veilo` handles both running the server and performing client administrative commands.
+
+### Installation & Configuration
+
+1. Compile the binary from source:
+   ```bash
+   go build -o veilo
+   ```
+
+2. Set your Veilo instance's API URL, credentials, and defaults:
+   ```bash
+   ./veilo config set api-url http://localhost:8084/v1
+   ./veilo config set api-key your_api_key
+   ./veilo config set default-domain yourdomain.com
+   ./veilo config set default-email your-inbox@gmail.com
+   ```
+
+3. View your configuration settings:
+   ```bash
+   ./veilo config show
+   ```
+
+### CLI Commands
+
+#### Create an Alias
+Create an alias with auto-generated values, or customize its properties and self-destruct limits:
+```bash
+# Creative auto-generated creative slug alias
+./veilo create
+
+# Create with custom slug, domain, and real destination email
+./veilo create --slug custom-slug --domain yourdomain.com --email me@gmail.com
+
+# Create an alias that expires in 24 hours (supports durations e.g., 12h, 7d, 30d, or RFC3339 timestamp)
+./veilo create --expires-at 24h
+
+# Create an alias that self-destructs (auto-disables) after forwarding 5 emails
+./veilo create --max-forwards 5
+```
+
+#### List & Manage Aliases
+```bash
+# List all registered aliases
+./veilo list
+
+# List only enabled aliases
+./veilo list --enabled
+
+# Get specific alias details (displays expires_at, max_forwards, forwarded count)
+./veilo get <alias-address-or-id>
+
+# Enable / Disable / Delete an alias
+./veilo enable <alias-address>
+./veilo disable <alias-address>
+./veilo delete <alias-address>
+```
+
+#### View Statistics & Logs
+```bash
+# View global stats (shows Total Aliases, Total Forwarded, Total Blocked, Trackers Blocked)
+./veilo stats
+
+# View forward logs for an alias (shows sender, direction, status, and trackers blocked per email)
+./veilo logs <alias-address>
 ```
 
 ---
