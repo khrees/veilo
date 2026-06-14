@@ -91,3 +91,4 @@ type Stats struct {
 	TotalForwarded int64 `json:"total_forwarded"`
 	TotalBlocked   int64 `json:"total_blocked"`
 }
+

@@ -10,12 +10,16 @@ import (
 )
 
 type aliasController struct {
-	aliasSvc services.AliasService
+	aliasSvc      services.AliasService
+	forwardLogSvc services.ForwardLogService
 }
 
 // NewAliasController creates a new alias controller
-func NewAliasController(aliasSvc services.AliasService) *aliasController {
-	return &aliasController{aliasSvc: aliasSvc}
+func NewAliasController(aliasSvc services.AliasService, forwardLogSvc services.ForwardLogService) *aliasController {
+	return &aliasController{
+		aliasSvc:      aliasSvc,
+		forwardLogSvc: forwardLogSvc,
+	}
 }
 
 func (c *aliasController) RegisterRoutes(app *fiber.App) {
@@ -115,8 +119,15 @@ func (c *aliasController) ListAliases(ctx fiber.Ctx) error {
 	return SendSuccess(ctx, fiber.StatusOK, "Aliases retrieved successfully", aliases)
 }
 
+func (c *aliasController) resolveAlias(idOrAddress string) (*models.Alias, error) {
+	if strings.Contains(idOrAddress, "@") {
+		return c.aliasSvc.FindByAddress(idOrAddress)
+	}
+	return c.aliasSvc.GetByID(idOrAddress)
+}
+
 func (c *aliasController) GetAlias(ctx fiber.Ctx) error {
-	alias, err := c.aliasSvc.GetByID(ctx.Params("id"))
+	alias, err := c.resolveAlias(ctx.Params("id"))
 	if err != nil {
 		return err
 	}
@@ -124,7 +135,11 @@ func (c *aliasController) GetAlias(ctx fiber.Ctx) error {
 }
 
 func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
-	id := ctx.Params("id")
+	idOrAddress := ctx.Params("id")
+	alias, err := c.resolveAlias(idOrAddress)
+	if err != nil {
+		return err
+	}
 
 	var body struct {
 		Address     *string `json:"address,omitempty"`
@@ -163,7 +178,7 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 		updates["enabled"] = *body.Enabled
 	}
 
-	if err := c.aliasSvc.Update(id, updates); err != nil {
+	if err := c.aliasSvc.Update(alias.ID.String(), updates); err != nil {
 		return err
 	}
 
@@ -171,7 +186,11 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 }
 
 func (c *aliasController) DeleteAlias(ctx fiber.Ctx) error {
-	if err := c.aliasSvc.Delete(ctx.Params("id")); err != nil {
+	alias, err := c.resolveAlias(ctx.Params("id"))
+	if err != nil {
+		return err
+	}
+	if err := c.aliasSvc.Delete(alias.ID.String()); err != nil {
 		return err
 	}
 	return SendSuccess(ctx, fiber.StatusOK, "Alias deleted successfully", nil)

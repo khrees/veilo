@@ -50,10 +50,10 @@ func SetupRoutes(app *fiber.App, deps RouteDeps) {
 	domainController := NewDomainController(deps.DomainSvc)
 	domainController.RegisterRoutes(app)
 
-	aliasController := NewAliasController(deps.AliasSvc)
+	aliasController := NewAliasController(deps.AliasSvc, deps.ForwardLogSvc)
 	aliasController.RegisterRoutes(app)
 
-	forwardLogController := NewForwardLogController(deps.ForwardLogSvc)
+	forwardLogController := NewForwardLogController(deps.ForwardLogSvc, deps.AliasSvc)
 	forwardLogController.RegisterRoutes(app)
 
 	statsController := NewStatsController(deps.ForwardLogSvc)

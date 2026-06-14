@@ -32,6 +32,10 @@ type Config struct {
 }
 
 func main() {
+	Execute()
+}
+
+func startServer() {
 	_ = godotenv.Load()
 
 	cfg, err := env.ParseAs[Config]()

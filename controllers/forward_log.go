@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/services"
 )
 
@@ -15,11 +18,15 @@ const (
 
 type forwardLogController struct {
 	forwardLogSvc services.ForwardLogService
+	aliasSvc      services.AliasService
 }
 
 // NewForwardLogController creates a new forward log controller
-func NewForwardLogController(forwardLogSvc services.ForwardLogService) *forwardLogController {
-	return &forwardLogController{forwardLogSvc: forwardLogSvc}
+func NewForwardLogController(forwardLogSvc services.ForwardLogService, aliasSvc services.AliasService) *forwardLogController {
+	return &forwardLogController{
+		forwardLogSvc: forwardLogSvc,
+		aliasSvc:      aliasSvc,
+	}
 }
 
 func (c *forwardLogController) RegisterRoutes(app *fiber.App) {
@@ -28,8 +35,23 @@ func (c *forwardLogController) RegisterRoutes(app *fiber.App) {
 	api.Get("/aliases/:aliasID/logs", c.GetForwardLogs)
 }
 
+func (c *forwardLogController) resolveAlias(idOrAddress string) (*models.Alias, error) {
+	if c.aliasSvc == nil {
+		parsedUUID, _ := uuid.Parse(idOrAddress)
+		return &models.Alias{ID: parsedUUID, Address: idOrAddress}, nil
+	}
+	if strings.Contains(idOrAddress, "@") {
+		return c.aliasSvc.FindByAddress(idOrAddress)
+	}
+	return c.aliasSvc.GetByID(idOrAddress)
+}
+
 func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
-	aliasID := ctx.Params("aliasID")
+	aliasIDOrAddress := ctx.Params("aliasID")
+	alias, err := c.resolveAlias(aliasIDOrAddress)
+	if err != nil {
+		return err
+	}
 
 	limit := defaultLimit
 	offset := defaultOffset
@@ -41,7 +63,7 @@ func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
 		offset = ClampInt(o, 0, 1<<31-1, defaultOffset)
 	}
 
-	logs, err := c.forwardLogSvc.GetByAliasID(aliasID, limit, offset)
+	logs, err := c.forwardLogSvc.GetByAliasID(alias.ID.String(), limit, offset)
 	if err != nil {
 		return err
 	}

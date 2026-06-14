@@ -581,7 +581,10 @@ func TestAliasController_GetAlias(t *testing.T) {
 
 func TestAliasController_UpdateAlias(t *testing.T) {
 	mockSvc := new(mockAliasService)
-	mockSvc.On("Update", "some-id", mock.MatchedBy(func(updates map[string]any) bool {
+	aliasID := uuid.New()
+	alias := &models.Alias{ID: aliasID, Address: "test@test.com", Enabled: true}
+	mockSvc.On("GetByID", "some-id").Return(alias, nil)
+	mockSvc.On("Update", aliasID.String(), mock.MatchedBy(func(updates map[string]any) bool {
 		return updates["real_email"] == "new@example.com" &&
 			updates["enabled"] == false &&
 			updates["display_name"] == "new-display-name"
@@ -614,7 +617,10 @@ func TestAliasController_UpdateAlias(t *testing.T) {
 
 func TestAliasController_DeleteAlias(t *testing.T) {
 	mockSvc := new(mockAliasService)
-	mockSvc.On("Delete", mock.Anything).Return(nil)
+	aliasID := uuid.New()
+	alias := &models.Alias{ID: aliasID, Address: "test@test.com", Enabled: true}
+	mockSvc.On("GetByID", "some-id").Return(alias, nil)
+	mockSvc.On("Delete", aliasID.String()).Return(nil)
 
 	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
@@ -632,6 +638,7 @@ func TestAliasController_DeleteAlias(t *testing.T) {
 
 	mockSvc.AssertExpectations(t)
 }
+
 
 func TestForwardLogController_GetForwardLogs(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
