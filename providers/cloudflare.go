@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -70,9 +72,13 @@ func (p *cloudflareDNSProvider) ConfigureDNS(ctx context.Context, domainName str
 
 	// 2. Create DNS records on Cloudflare
 	for _, rec := range records {
+		recName := rec.Name
+		if recName == "" {
+			recName = domainName
+		}
 		bodyData := map[string]any{
 			"type":    rec.Type,
-			"name":    rec.Name,
+			"name":    recName,
 			"content": rec.Value,
 			"ttl":     3600,
 			"proxied": false,
@@ -98,11 +104,37 @@ func (p *cloudflareDNSProvider) ConfigureDNS(ctx context.Context, domainName str
 		if err != nil {
 			return err
 		}
-		postResp.Body.Close()
 
 		if postResp.StatusCode < 200 || postResp.StatusCode >= 300 {
-			return fmt.Errorf("cloudflare dns record creation failed: status %d", postResp.StatusCode)
+			var errResp struct {
+				Errors []struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+				} `json:"errors"`
+				Success bool `json:"success"`
+			}
+			bodyBytes, readErr := io.ReadAll(postResp.Body)
+			postResp.Body.Close()
+			if readErr == nil {
+				_ = json.Unmarshal(bodyBytes, &errResp)
+			}
+
+			isDuplicate := false
+			for _, e := range errResp.Errors {
+				if e.Code == 81058 || e.Code == 81053 || e.Code == 81054 {
+					isDuplicate = true
+					break
+				}
+			}
+
+			if isDuplicate {
+				log.Printf("[Info] DNS record %s (%s) already exists, skipping", rec.Name, rec.Type)
+				continue
+			}
+
+			return fmt.Errorf("cloudflare dns record creation failed: status %d, response: %s", postResp.StatusCode, string(bodyBytes))
 		}
+		postResp.Body.Close()
 	}
 
 	return nil

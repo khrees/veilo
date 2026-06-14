@@ -106,6 +106,7 @@ func NewWebhookController(deps RouteDeps) *webhookController {
 
 // RegisterRoutes registers the webhook routes.
 func (c *webhookController) RegisterRoutes(app *fiber.App) {
+	app.Post("/", c.HandleInboundWebhook)
 	app.Post("/webhook/inbound", c.HandleInboundWebhook)
 	// needed for testing with smee.io
 	app.Post("/:channel/webhook/inbound", c.HandleInboundWebhook)

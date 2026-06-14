@@ -43,12 +43,13 @@ func (c *aliasController) RegisterRoutes(app *fiber.App) {
 
 func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 	var body struct {
-		Address   string  `json:"address"`
-		Slug      string  `json:"slug"`
-		Domain    string  `json:"domain"`
-		RealEmail string  `json:"real_email"`
-		Label     *string `json:"label,omitempty"`
-		Enabled   *bool   `json:"enabled,omitempty"`
+		Address     string  `json:"address"`
+		Slug        string  `json:"slug"`
+		Domain      string  `json:"domain"`
+		RealEmail   string  `json:"real_email"`
+		DisplayName *string `json:"display_name,omitempty"`
+		Label       *string `json:"label,omitempty"`
+		Enabled     *bool   `json:"enabled,omitempty"`
 	}
 	if err := ctx.Bind().Body(&body); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
@@ -96,12 +97,13 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 	}
 
 	alias, err := c.aliasSvc.Create(services.AliasCreateInput{
-		Address:   body.Address,
-		Slug:      body.Slug,
-		Domain:    body.Domain,
-		RealEmail: body.RealEmail,
-		Label:     body.Label,
-		Enabled:   enabled,
+		Address:     body.Address,
+		Slug:        body.Slug,
+		Domain:      body.Domain,
+		RealEmail:   body.RealEmail,
+		DisplayName: body.DisplayName,
+		Label:       body.Label,
+		Enabled:     enabled,
 	})
 	if err != nil {
 		return err
@@ -157,10 +159,11 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 	id := ctx.Params("id")
 
 	var body struct {
-		Address   *string `json:"address,omitempty"`
-		RealEmail *string `json:"real_email,omitempty"`
-		Label     *string `json:"label,omitempty"`
-		Enabled   *bool   `json:"enabled,omitempty"`
+		Address     *string `json:"address,omitempty"`
+		RealEmail   *string `json:"real_email,omitempty"`
+		DisplayName *string `json:"display_name,omitempty"`
+		Label       *string `json:"label,omitempty"`
+		Enabled     *bool   `json:"enabled,omitempty"`
 	}
 
 	if err := ctx.Bind().Body(&body); err != nil {
@@ -181,6 +184,9 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusBadRequest, "real_email must be a valid email address")
 		}
 		updates["real_email"] = email
+	}
+	if body.DisplayName != nil {
+		updates["display_name"] = *body.DisplayName
 	}
 	if body.Label != nil {
 		updates["label"] = *body.Label

@@ -29,6 +29,11 @@ func (m *mockWebhookSvc) ProcessEmailReceived(ctx context.Context, input service
 	return args.Error(0)
 }
 
+func (m *mockWebhookSvc) CleanupExpiredTokens(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 // ---------- Helper functions ----------
 
 func generateTestSvixHeaders(secret string, payload []byte) map[string]string {

@@ -45,6 +45,32 @@ func TestResendEmailProvider_RegisterDomain_Success(t *testing.T) {
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
+
+		if r.Method == "PATCH" && r.URL.Path == "/domains/dom_123" {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]any{"object": "domain", "id": "dom_123"})
+			return
+		}
+
+		if r.Method == "GET" && r.URL.Path == "/domains/dom_123" {
+			resp := resend.Domain{
+				Id:     "dom_123",
+				Name:   "example.com",
+				Status: "pending",
+				Records: []resend.Record{
+					{
+						Type:  "MX",
+						Name:  "mail",
+						Value: "feedback-smtp.us-east-1.amazonses.com",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
@@ -69,6 +95,7 @@ func TestResendEmailProvider_RegisterDomain_Success(t *testing.T) {
 
 func TestResendEmailProvider_VerifyDomain(t *testing.T) {
 	var verifyCalled, getCalled bool
+	var getCount int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" && r.URL.Path == "/domains/dom_123/verify" {
 			verifyCalled = true
@@ -77,9 +104,14 @@ func TestResendEmailProvider_VerifyDomain(t *testing.T) {
 		}
 		if r.Method == "GET" && r.URL.Path == "/domains/dom_123" {
 			getCalled = true
+			getCount++
+			status := "pending"
+			if getCount > 1 {
+				status = "verified"
+			}
 			resp := resend.Domain{
 				Id:     "dom_123",
-				Status: "verified",
+				Status: status,
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -175,5 +207,88 @@ func TestResendEmailProvider_SendEmail(t *testing.T) {
 	}
 	if id != "send_123" {
 		t.Errorf("expected send_123, got %s", id)
+	}
+}
+
+func TestResendEmailProvider_EnsureWebhook_Exists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && r.URL.Path == "/webhooks" {
+			resp := resend.ListWebhooksResponse{
+				Object: "list",
+				Data: []resend.WebhookInList{
+					{
+						Id:       "wh_123",
+						Endpoint: "https://example.com/webhook",
+						Status:   "enabled",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := resend.NewClient("mock-key")
+	u, _ := url.Parse(server.URL)
+	client.BaseURL = u
+
+	prov := NewResendEmailProvider(client)
+	id, secret, err := prov.EnsureWebhook(context.Background(), "https://example.com/webhook")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if id != "wh_123" || secret != "" {
+		t.Errorf("expected wh_123 and empty secret, got id=%s, secret=%s", id, secret)
+	}
+}
+
+func TestResendEmailProvider_EnsureWebhook_Created(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && r.URL.Path == "/webhooks" {
+			resp := resend.ListWebhooksResponse{
+				Object: "list",
+				Data:   []resend.WebhookInList{},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		if r.Method == "POST" && r.URL.Path == "/webhooks" {
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			if body["endpoint"] != "https://example.com/webhook" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			resp := resend.Webhook{
+				Id:            "wh_new",
+				Endpoint:      "https://example.com/webhook",
+				SigningSecret: "whsec_supersecret",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := resend.NewClient("mock-key")
+	u, _ := url.Parse(server.URL)
+	client.BaseURL = u
+
+	prov := NewResendEmailProvider(client)
+	id, secret, err := prov.EnsureWebhook(context.Background(), "https://example.com/webhook")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if id != "wh_new" || secret != "whsec_supersecret" {
+		t.Errorf("expected wh_new and secret whsec_supersecret, got id=%s, secret=%s", id, secret)
 	}
 }

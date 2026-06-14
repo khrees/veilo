@@ -36,6 +36,7 @@ type EmailProvider interface {
 	VerifyDomain(ctx context.Context, domainID string) (bool, error)
 	GetReceivedEmail(ctx context.Context, emailID string) (*ReceivedEmail, error)
 	SendEmail(ctx context.Context, input SendEmailInput) (string, error)
+	EnsureWebhook(ctx context.Context, webhookURL string) (string, string, error)
 }
 
 type DNSRecord struct {

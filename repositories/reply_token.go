@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"time"
+
 	"github.com/khrees/veilo/models"
 	"gorm.io/gorm"
 )
@@ -9,6 +11,7 @@ type ReplyTokenRepository interface {
 	Create(t *models.ReplyToken) error
 	FindByToken(token string) (*models.ReplyToken, error)
 	Delete(token string) error
+	DeleteExpired(now time.Time) error
 }
 
 type replyTokenRepository struct {
@@ -30,4 +33,8 @@ func (r *replyTokenRepository) FindByToken(token string) (*models.ReplyToken, er
 
 func (r *replyTokenRepository) Delete(token string) error {
 	return r.db.Delete(&models.ReplyToken{}, "token = ?", token).Error
+}
+
+func (r *replyTokenRepository) DeleteExpired(now time.Time) error {
+	return r.db.Where("expires_at < ?", now).Delete(&models.ReplyToken{}).Error
 }

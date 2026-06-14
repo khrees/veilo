@@ -2,6 +2,7 @@ package controllers_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -55,6 +56,15 @@ func (m *mockDomainService) FindByName(name string) (*models.Domain, error) {
 		return arg0.(*models.Domain), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func (m *mockDomainService) VerifyDomains(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *mockDomainService) StartVerificationWorker(ctx context.Context, interval time.Duration) {
+	_ = m.Called(ctx, interval)
 }
 
 type mockAliasService struct {
@@ -366,21 +376,31 @@ func TestAliasController_CreateAlias_WithOptionalFields(t *testing.T) {
 		Slug:         "test-slug",
 		Domain:       "test.com",
 		RealEmail:    "real@example.com",
+		DisplayName:  stringPtr("test-display-name"),
 		Label:        stringPtr("test-label"),
 		Enabled:      false,
 		ForwardCount: 0,
 	}
-	mockSvc.On("Create", mock.Anything).Return(alias, nil)
+	mockSvc.On("Create", mock.MatchedBy(func(input services.AliasCreateInput) bool {
+		return input.Address == "test@test.com" &&
+			input.Slug == "test-slug" &&
+			input.Domain == "test.com" &&
+			input.RealEmail == "real@example.com" &&
+			input.DisplayName != nil && *input.DisplayName == "test-display-name" &&
+			input.Label != nil && *input.Label == "test-label" &&
+			!input.Enabled
+	})).Return(alias, nil)
 
 	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	body := map[string]any{
-		"address":    "test@test.com",
-		"slug":       "test-slug",
-		"domain":     "test.com",
-		"real_email": "real@example.com",
-		"label":      "test-label",
-		"enabled":    false,
+		"address":      "test@test.com",
+		"slug":         "test-slug",
+		"domain":       "test.com",
+		"real_email":   "real@example.com",
+		"display_name": "test-display-name",
+		"label":        "test-label",
+		"enabled":      false,
 	}
 	jsonBody, _ := json.Marshal(body)
 
@@ -563,13 +583,18 @@ func TestAliasController_GetAlias(t *testing.T) {
 
 func TestAliasController_UpdateAlias(t *testing.T) {
 	mockSvc := new(mockAliasService)
-	mockSvc.On("Update", mock.Anything, mock.Anything).Return(nil)
+	mockSvc.On("Update", "some-id", mock.MatchedBy(func(updates map[string]any) bool {
+		return updates["real_email"] == "new@example.com" &&
+			updates["enabled"] == false &&
+			updates["display_name"] == "new-display-name"
+	})).Return(nil)
 
 	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
 
 	body := map[string]any{
-		"real_email": "new@example.com",
-		"enabled":    false,
+		"real_email":   "new@example.com",
+		"enabled":      false,
+		"display_name": "new-display-name",
 	}
 	jsonBody, _ := json.Marshal(body)
 

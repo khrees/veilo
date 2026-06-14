@@ -1,11 +1,14 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/providers"
 	"github.com/khrees/veilo/services"
 )
 
@@ -210,6 +213,49 @@ func (m *mockForwardLogRepository) Create(f *models.ForwardLog) error {
 	return nil
 }
 
+type mockEmailProvider struct {
+	registerDomainFunc func(ctx context.Context, domainName string) (*providers.RegisterDomainResult, error)
+	verifyDomainFunc   func(ctx context.Context, domainID string) (bool, error)
+	getReceivedEmailFunc func(ctx context.Context, emailID string) (*providers.ReceivedEmail, error)
+	sendEmailFunc      func(ctx context.Context, input providers.SendEmailInput) (string, error)
+	ensureWebhookFunc  func(ctx context.Context, webhookURL string) (string, string, error)
+}
+
+func (m *mockEmailProvider) RegisterDomain(ctx context.Context, domainName string) (*providers.RegisterDomainResult, error) {
+	if m.registerDomainFunc != nil {
+		return m.registerDomainFunc(ctx, domainName)
+	}
+	return nil, nil
+}
+
+func (m *mockEmailProvider) VerifyDomain(ctx context.Context, domainID string) (bool, error) {
+	if m.verifyDomainFunc != nil {
+		return m.verifyDomainFunc(ctx, domainID)
+	}
+	return false, nil
+}
+
+func (m *mockEmailProvider) GetReceivedEmail(ctx context.Context, emailID string) (*providers.ReceivedEmail, error) {
+	if m.getReceivedEmailFunc != nil {
+		return m.getReceivedEmailFunc(ctx, emailID)
+	}
+	return nil, nil
+}
+
+func (m *mockEmailProvider) SendEmail(ctx context.Context, input providers.SendEmailInput) (string, error) {
+	if m.sendEmailFunc != nil {
+		return m.sendEmailFunc(ctx, input)
+	}
+	return "", nil
+}
+
+func (m *mockEmailProvider) EnsureWebhook(ctx context.Context, webhookURL string) (string, string, error) {
+	if m.ensureWebhookFunc != nil {
+		return m.ensureWebhookFunc(ctx, webhookURL)
+	}
+	return "", "", nil
+}
+
 func TestDomainService_Register(t *testing.T) {
 	mockRepo := &mockDomainRepository{}
 	svc := services.NewDomainService(mockRepo, nil, nil)
@@ -314,6 +360,79 @@ func TestDomainService_FindByName(t *testing.T) {
 	}
 }
 
+func TestDomainService_VerifyDomains(t *testing.T) {
+	id := uuid.New()
+	mockRepo := &mockDomainRepository{
+		domains: map[string]*models.Domain{
+			id.String(): {ID: id, Name: "test.com", Verified: false},
+		},
+	}
+
+	mockEmail := &mockEmailProvider{
+		registerDomainFunc: func(ctx context.Context, name string) (*providers.RegisterDomainResult, error) {
+			return &providers.RegisterDomainResult{
+				DomainID: "dom_123",
+				Verified: false,
+			}, nil
+		},
+		verifyDomainFunc: func(ctx context.Context, domID string) (bool, error) {
+			return true, nil
+		},
+	}
+
+	svc := services.NewDomainService(mockRepo, mockEmail, nil)
+	err := svc.VerifyDomains(context.Background())
+	if err != nil {
+		t.Fatalf("failed to verify domains: %v", err)
+	}
+
+	domain, err := mockRepo.FindByID(id.String())
+	if err != nil {
+		t.Fatalf("failed to find domain: %v", err)
+	}
+
+	if !domain.Verified {
+		t.Error("expected domain to be verified by VerifyDomains")
+	}
+}
+
+func TestDomainService_StartVerificationWorker(t *testing.T) {
+	id := uuid.New()
+	mockRepo := &mockDomainRepository{
+		domains: map[string]*models.Domain{
+			id.String(): {ID: id, Name: "test.com", Verified: false},
+		},
+	}
+
+	mockEmail := &mockEmailProvider{
+		registerDomainFunc: func(ctx context.Context, name string) (*providers.RegisterDomainResult, error) {
+			return &providers.RegisterDomainResult{
+				DomainID: "dom_123",
+				Verified: false,
+			}, nil
+		},
+		verifyDomainFunc: func(ctx context.Context, domID string) (bool, error) {
+			return true, nil
+		},
+	}
+
+	svc := services.NewDomainService(mockRepo, mockEmail, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	svc.StartVerificationWorker(ctx, 2*time.Millisecond)
+
+	time.Sleep(15 * time.Millisecond)
+	cancel()
+
+	domain, err := mockRepo.FindByID(id.String())
+	if err != nil {
+		t.Fatalf("failed to find domain: %v", err)
+	}
+
+	if !domain.Verified {
+		t.Error("expected domain to be verified by the background worker")
+	}
+}
+
 func TestAliasService_Create(t *testing.T) {
 	mockRepo := &mockAliasRepository{}
 	svc := services.NewAliasService(mockRepo)
@@ -374,6 +493,25 @@ func TestAliasService_GetByID(t *testing.T) {
 
 	if alias.Address != "test@test.com" {
 		t.Errorf("expected address 'test@test.com', got '%s'", alias.Address)
+	}
+}
+
+func TestAliasService_FindByAddress(t *testing.T) {
+	id := uuid.New()
+	mockRepo := &mockAliasRepository{
+		aliases: map[string]*models.Alias{
+			id.String(): {ID: id, Address: "test@test.com", Enabled: true},
+		},
+	}
+	svc := services.NewAliasService(mockRepo)
+
+	alias, err := svc.FindByAddress("test@test.com")
+	if err != nil {
+		t.Fatalf("failed to find alias by address: %v", err)
+	}
+
+	if alias.ID != id {
+		t.Errorf("expected ID %s, got %s", id, alias.ID)
 	}
 }
 
@@ -445,6 +583,27 @@ func TestForwardLogService_GetByAliasID(t *testing.T) {
 
 	if len(logs) != 3 {
 		t.Errorf("expected 3 forward logs, got %d", len(logs))
+	}
+}
+
+func TestForwardLogService_Create(t *testing.T) {
+	aliasID := uuid.New()
+	mockRepo := &mockForwardLogRepository{}
+	svc := services.NewForwardLogService(mockRepo)
+
+	logEntry := &models.ForwardLog{
+		AliasID:   aliasID,
+		Direction: "inbound",
+		Status:    "delivered",
+	}
+
+	err := svc.Create(logEntry)
+	if err != nil {
+		t.Fatalf("failed to create forward log: %v", err)
+	}
+
+	if logEntry.ID == uuid.Nil {
+		t.Error("expected forward log entry to receive a UUID")
 	}
 }
 

@@ -26,6 +26,7 @@ type EmailReceivedInput struct {
 
 type IWebhookService interface {
 	ProcessEmailReceived(ctx context.Context, input EmailReceivedInput) error
+	CleanupExpiredTokens(ctx context.Context) error
 }
 
 type webhookService struct {
@@ -34,6 +35,7 @@ type webhookService struct {
 	replyTokenRepo    repositories.ReplyTokenRepository
 	emailProv         providers.EmailProvider
 	replyTokenTTLDays int
+	viaBrandName      string
 }
 
 func NewWebhookService(
@@ -42,6 +44,7 @@ func NewWebhookService(
 	replyTokenRepo repositories.ReplyTokenRepository,
 	emailProv providers.EmailProvider,
 	replyTokenTTLDays int,
+	viaBrandName string,
 ) IWebhookService {
 	return &webhookService{
 		aliasRepo:         aliasRepo,
@@ -49,6 +52,7 @@ func NewWebhookService(
 		replyTokenRepo:    replyTokenRepo,
 		emailProv:         emailProv,
 		replyTokenTTLDays: replyTokenTTLDays,
+		viaBrandName:      viaBrandName,
 	}
 }
 
@@ -157,7 +161,11 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 		return fmt.Errorf("failed to process reply token: %w", createErr)
 	}
 
-	newFrom := fmt.Sprintf("\"%s via Veilo\" <%s>", senderName, alias.Address)
+	brand := s.viaBrandName
+	if alias.DisplayName != nil && *alias.DisplayName != "" {
+		brand = *alias.DisplayName
+	}
+	newFrom := fmt.Sprintf("\"%s via %s\" <%s>", senderName, brand, alias.Address)
 	replyTo := fmt.Sprintf("reply+%s@%s", replyToken.Token, alias.Domain)
 
 	headersMap := map[string]string{
@@ -239,8 +247,13 @@ func (s *webhookService) handleReplyFlow(ctx context.Context, input EmailReceive
 	//    - From: alias address
 	//    - To:   reply_token.original_sender
 	// Send via email provider
+	fromHeader := alias.Address
+	if alias.DisplayName != nil && *alias.DisplayName != "" {
+		fromHeader = fmt.Sprintf("\"%s\" <%s>", *alias.DisplayName, alias.Address)
+	}
+
 	_, err = s.emailProv.SendEmail(ctx, providers.SendEmailInput{
-		From:    alias.Address,
+		From:    fromHeader,
 		To:      []string{replyToken.OriginalSender},
 		Subject: receivedEmail.Subject,
 		Html:    receivedEmail.Html,
@@ -265,4 +278,9 @@ func (s *webhookService) handleReplyFlow(ctx context.Context, input EmailReceive
 	}
 
 	return nil
+}
+
+func (s *webhookService) CleanupExpiredTokens(ctx context.Context) error {
+	now := time.Now()
+	return s.replyTokenRepo.DeleteExpired(now)
 }

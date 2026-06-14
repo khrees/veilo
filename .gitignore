@@ -2,3 +2,7 @@
 tmp*
 
 .claude
+
+
+coverage.out
+veilo-bin

@@ -17,12 +17,13 @@ type IAliasService interface {
 
 // AliasCreateInput groups the values needed to create an alias.
 type AliasCreateInput struct {
-	Address   string
-	Slug      string
-	Domain    string
-	RealEmail string
-	Label     *string
-	Enabled   bool
+	Address     string
+	Slug        string
+	Domain      string
+	RealEmail   string
+	DisplayName *string
+	Label       *string
+	Enabled     bool
 }
 
 // aliasService implements IAliasService
@@ -44,6 +45,7 @@ func (a *aliasService) Create(input AliasCreateInput) (*models.Alias, error) {
 		Slug:         input.Slug,
 		Domain:       input.Domain,
 		RealEmail:    input.RealEmail,
+		DisplayName:  input.DisplayName,
 		Label:        input.Label,
 		Enabled:      input.Enabled,
 		ForwardCount: 0,

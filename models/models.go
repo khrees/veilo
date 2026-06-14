@@ -31,6 +31,7 @@ type Alias struct {
 	Slug         string     `json:"slug" gorm:"type:text;not null"`
 	Domain       string     `json:"domain" gorm:"type:text;not null"`
 	RealEmail    string     `json:"real_email" gorm:"type:text;not null"`
+	DisplayName  *string    `json:"display_name,omitempty" gorm:"type:text"`
 	Label        *string    `json:"label,omitempty" gorm:"type:text"`
 	Enabled      bool       `json:"enabled" gorm:"not null"`
 	ForwardCount int        `json:"forward_count" gorm:"not null;default:0"`

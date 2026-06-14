@@ -4,6 +4,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/khrees/veilo/models"
@@ -18,6 +19,8 @@ type IDomainService interface {
 	FindAll() ([]models.Domain, error)
 	FindByID(id string) (*models.Domain, error)
 	FindByName(name string) (*models.Domain, error)
+	VerifyDomains(ctx context.Context) error
+	StartVerificationWorker(ctx context.Context, interval time.Duration)
 }
 
 // domainService implements IDomainService
@@ -126,4 +129,57 @@ func (d *domainService) FindByID(id string) (*models.Domain, error) {
 // FindByName finds a domain by name
 func (d *domainService) FindByName(name string) (*models.Domain, error) {
 	return d.domainRepo.FindByName(name)
+}
+
+func (d *domainService) VerifyDomains(ctx context.Context) error {
+	domains, err := d.domainRepo.FindAll()
+	if err != nil {
+		return err
+	}
+
+	for _, dom := range domains {
+		if !dom.Verified {
+			log.Infof("Checking verification status for domain: %s", dom.Name)
+			res, err := d.emailProv.RegisterDomain(ctx, dom.Name)
+			if err != nil {
+				log.Errorf("Worker failed to fetch domain info for %s: %v", dom.Name, err)
+				continue
+			}
+
+			verified, err := d.emailProv.VerifyDomain(ctx, res.DomainID)
+			if err != nil {
+				log.Errorf("Worker failed to verify domain status for %s: %v", dom.Name, err)
+				continue
+			}
+
+			if verified {
+				dom.Verified = true
+				if updateErr := d.domainRepo.Update(&dom); updateErr != nil {
+					log.Errorf("Worker failed to update domain status in DB for %s: %v", dom.Name, updateErr)
+				} else {
+					log.Infof("Worker successfully verified and activated domain: %s", dom.Name)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (d *domainService) StartVerificationWorker(ctx context.Context, interval time.Duration) {
+	if d.emailProv == nil {
+		return
+	}
+
+	ticker := time.NewTicker(interval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				_ = d.VerifyDomains(ctx)
+			}
+		}
+	}()
 }

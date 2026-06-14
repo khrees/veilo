@@ -68,6 +68,7 @@ func TestAliasStruct(t *testing.T) {
 		Slug:         "test-slug",
 		Domain:       "test.com",
 		RealEmail:    "real@example.com",
+		DisplayName:  stringPtr("test-display-name"),
 		Label:        stringPtr("test-label"),
 		Enabled:      true,
 		ForwardCount: 5,
@@ -89,6 +90,9 @@ func TestAliasStruct(t *testing.T) {
 	}
 	if alias.RealEmail != "real@example.com" {
 		t.Errorf("expected real_email 'real@example.com', got '%s'", alias.RealEmail)
+	}
+	if alias.DisplayName == nil || *alias.DisplayName != "test-display-name" {
+		t.Errorf("expected display_name 'test-display-name', got %v", alias.DisplayName)
 	}
 	if alias.Label == nil || *alias.Label != "test-label" {
 		t.Errorf("expected label 'test-label', got %v", alias.Label)

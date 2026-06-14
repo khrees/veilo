@@ -36,6 +36,7 @@ func setupTestDB() *gorm.DB {
 		"slug" TEXT NOT NULL,
 		"domain" TEXT NOT NULL,
 		"real_email" TEXT NOT NULL,
+		"display_name" TEXT,
 		"label" TEXT,
 		"enabled" INTEGER NOT NULL DEFAULT 1,
 		"forward_count" INTEGER NOT NULL DEFAULT 0,
@@ -93,6 +94,21 @@ func TestDomainRepository_Create(t *testing.T) {
 
 	if domain.ID == uuid.Nil {
 		t.Error("expected domain to have a non-nil UUID after creation")
+	}
+
+	// Test Update
+	domain.Verified = true
+	if err := repo.Update(domain); err != nil {
+		t.Fatalf("failed to update domain: %v", err)
+	}
+
+	// Test FindByName
+	found, err := repo.FindByName("test.com")
+	if err != nil {
+		t.Fatalf("failed to find domain by name: %v", err)
+	}
+	if !found.Verified {
+		t.Error("expected domain to be verified after update")
 	}
 }
 
@@ -338,6 +354,16 @@ func TestAliasRepository_FindByID(t *testing.T) {
 	if result.Address != "test@test.com" {
 		t.Errorf("expected address 'test@test.com', got '%s'", result.Address)
 	}
+
+	// Find by Address
+	resultByAddr, err := repo.FindByAddress("test@test.com")
+	if err != nil {
+		t.Fatalf("failed to find alias by address: %v", err)
+	}
+
+	if resultByAddr.ID != alias.ID {
+		t.Errorf("expected ID %s, got %s", alias.ID, resultByAddr.ID)
+	}
 }
 
 func TestAliasRepository_Update(t *testing.T) {
@@ -422,7 +448,7 @@ func TestForwardLogRepository_FindByAliasID(t *testing.T) {
 
 	aliasID := uuid.New()
 
-	// Insert forward logs directly using DB
+	// Insert forward logs using repo
 	forwardLogs := []*models.ForwardLog{
 		{AliasID: aliasID, Direction: "inbound", Status: "delivered", CreatedAt: time.Now().Add(-2 * time.Hour)},
 		{AliasID: aliasID, Direction: "inbound", Status: "blocked", CreatedAt: time.Now().Add(-1 * time.Hour)},
@@ -430,7 +456,7 @@ func TestForwardLogRepository_FindByAliasID(t *testing.T) {
 	}
 
 	for _, log := range forwardLogs {
-		err := db.Create(log).Error
+		err := repo.Create(log)
 		if err != nil {
 			t.Fatalf("failed to create forward log: %v", err)
 		}
@@ -473,7 +499,7 @@ func TestForwardLogRepository_GetStats(t *testing.T) {
 		{AliasID: aliasID, Direction: "reply", Status: "bounced"},
 	}
 	for _, log := range forwardLogs {
-		err := db.Create(log).Error
+		err := repo.Create(log)
 		if err != nil {
 			t.Fatalf("failed to create forward log: %v", err)
 		}
@@ -493,5 +519,78 @@ func TestForwardLogRepository_GetStats(t *testing.T) {
 	}
 	if stats.TotalBlocked != 1 {
 		t.Errorf("expected 1 total blocked, got %d", stats.TotalBlocked)
+	}
+}
+
+func TestReplyTokenRepository_All(t *testing.T) {
+	db := setupTestDB()
+	defer db.Migrator().DropTable(&models.ReplyToken{})
+
+	repo := repositories.NewReplyTokenRepository(db)
+
+	aliasID := uuid.New()
+	subject := "Hello test"
+	thread := "msg_123"
+
+	// 1. Create
+	token := &models.ReplyToken{
+		Token:           "test-token-1",
+		AliasID:         aliasID,
+		OriginalSender:  "sender@example.com",
+		OriginalSubject: &subject,
+		ThreadID:        &thread,
+		ExpiresAt:       time.Now().Add(-1 * time.Hour), // Already expired
+	}
+
+	token2 := &models.ReplyToken{
+		Token:           "test-token-2",
+		AliasID:         aliasID,
+		OriginalSender:  "sender2@example.com",
+		OriginalSubject: &subject,
+		ThreadID:        &thread,
+		ExpiresAt:       time.Now().Add(1 * time.Hour), // Active
+	}
+
+	if err := repo.Create(token); err != nil {
+		t.Fatalf("failed to create token: %v", err)
+	}
+	if err := repo.Create(token2); err != nil {
+		t.Fatalf("failed to create token2: %v", err)
+	}
+
+	// 2. FindByToken
+	found, err := repo.FindByToken("test-token-2")
+	if err != nil {
+		t.Fatalf("failed to find token: %v", err)
+	}
+	if found.OriginalSender != "sender2@example.com" {
+		t.Errorf("expected sender2@example.com, got %s", found.OriginalSender)
+	}
+
+	// 3. DeleteExpired
+	if err := repo.DeleteExpired(time.Now()); err != nil {
+		t.Fatalf("failed to delete expired tokens: %v", err)
+	}
+
+	// Verify test-token-1 (expired) is gone
+	_, err = repo.FindByToken("test-token-1")
+	if err == nil {
+		t.Error("expected expired token to be deleted, but it was found")
+	}
+
+	// Verify test-token-2 (active) is still there
+	_, err = repo.FindByToken("test-token-2")
+	if err != nil {
+		t.Errorf("expected active token to remain, got err: %v", err)
+	}
+
+	// 4. Delete
+	if err := repo.Delete("test-token-2"); err != nil {
+		t.Fatalf("failed to delete token: %v", err)
+	}
+
+	_, err = repo.FindByToken("test-token-2")
+	if err == nil {
+		t.Error("expected token to be deleted")
 	}
 }

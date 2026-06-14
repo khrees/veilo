@@ -104,6 +104,11 @@ func (m *mockReplyTokenRepo) Delete(token string) error {
 	return args.Error(0)
 }
 
+func (m *mockReplyTokenRepo) DeleteExpired(now time.Time) error {
+	args := m.Called(now)
+	return args.Error(0)
+}
+
 // ---------- Tests ----------
 
 func TestWebhookService_ProcessEmailReceived_ForwardFlow_Success(t *testing.T) {
@@ -136,7 +141,7 @@ func TestWebhookService_ProcessEmailReceived_ForwardFlow_Success(t *testing.T) {
 	parsedURL, _ := url.Parse(resendServer.URL)
 	resendClient.BaseURL = parsedURL
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90, "Veilo")
 
 	// Inputs
 	input := services.EmailReceivedInput{
@@ -186,7 +191,7 @@ func TestWebhookService_ProcessEmailReceived_ForwardFlow_AliasNotFound(t *testin
 	mockForwardLog := new(mockForwardLogRepo)
 	mockReplyToken := new(mockReplyTokenRepo)
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90, "Veilo")
 
 	input := services.EmailReceivedInput{
 		EmailID: "email_123",
@@ -210,7 +215,7 @@ func TestWebhookService_ProcessEmailReceived_ForwardFlow_AliasDisabled(t *testin
 	mockForwardLog := new(mockForwardLogRepo)
 	mockReplyToken := new(mockReplyTokenRepo)
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90, "Veilo")
 
 	input := services.EmailReceivedInput{
 		EmailID: "email_123",
@@ -268,7 +273,7 @@ func TestWebhookService_ProcessEmailReceived_ReplyFlow_Success(t *testing.T) {
 	parsedURL, _ := url.Parse(resendServer.URL)
 	resendClient.BaseURL = parsedURL
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90, "Veilo")
 
 	input := services.EmailReceivedInput{
 		EmailID: "email_reply",
@@ -312,7 +317,7 @@ func TestWebhookService_ProcessEmailReceived_ReplyFlow_ExpiredToken(t *testing.T
 	mockForwardLog := new(mockForwardLogRepo)
 	mockReplyToken := new(mockReplyTokenRepo)
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90, "Veilo")
 
 	input := services.EmailReceivedInput{
 		EmailID: "email_reply",
