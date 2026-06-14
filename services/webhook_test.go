@@ -15,6 +15,7 @@ import (
 	"github.com/khrees/veilo/providers"
 	"github.com/khrees/veilo/services"
 	"github.com/resend/resend-go/v3"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -347,4 +348,22 @@ func TestWebhookService_ProcessEmailReceived_ReplyFlow_ExpiredToken(t *testing.T
 	}
 
 	mockReplyToken.AssertExpectations(t)
+}
+
+func TestWebhookService_CleanupExpiredTokens(t *testing.T) {
+	t.Parallel()
+	mockAlias := new(mockAliasRepo)
+	mockForwardLog := new(mockForwardLogRepo)
+	mockReplyToken := new(mockReplyTokenRepo)
+
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, nil, 90, "Veilo")
+
+	mockReplyToken.On("DeleteExpired", mock.Anything).Return(nil)
+	mockAlias.On("DisableExpired", mock.Anything).Return(nil)
+
+	err := svc.CleanupExpiredTokens(context.Background())
+	assert.NoError(t, err)
+
+	mockReplyToken.AssertExpectations(t)
+	mockAlias.AssertExpectations(t)
 }
