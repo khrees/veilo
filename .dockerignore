@@ -1,0 +1,20 @@
+# Ignore local git repository
+.git
+.gitignore
+
+# Ignore local builds and binaries
+veilo
+veilo-bin
+tmp/
+coverage.out
+
+# Ignore environments and secrets
+.env
+.env.example
+
+# Ignore OS-specific files
+.DS_Store
+
+# Ignore task and test logs
+.gemini/
+.claude/

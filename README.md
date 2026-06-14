@@ -265,6 +265,40 @@ Veilo automatically manages and configures webhooks on Resend for you:
 
 ---
 
+## 🐳 Docker & Production Deployment
+
+Veilo can be easily containerized and deployed to modern platforms like **Railway** or **Render** using the provided `Dockerfile`.
+
+### Build & Run Locally with Docker
+
+1. Build the Docker image:
+   ```bash
+   docker build -t veilo .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -p 8084:8084 --env-file .env veilo
+   ```
+
+### Deploying to Railway
+
+1. Click **New Project** on Railway.
+2. Select **Deploy from GitHub repo** and select your Veilo repository.
+3. Railway will automatically detect the root `Dockerfile` and start building the container.
+4. Go to **Variables** under your service and add all the environment variables defined in `.env` (such as `DB_HOST`, `RESEND_API_KEY`, etc.).
+5. Under **Settings**, generate a Domain to expose the server. Railway dynamically binds to the port using the `PORT` variable.
+
+### Deploying to Render
+
+1. Click **New +** and select **Web Service**.
+2. Connect your GitHub repository.
+3. Set the **Runtime** to `Docker`.
+4. Click **Advanced** and add all the environment variables defined in `.env`.
+5. Render will automatically detect the port exposed in the Dockerfile (`8084`) or bind to the dynamically injected `PORT`.
+
+---
+
 ## 🤝 Contributing Guidelines
 
 We love contributions! To help us keep Veilo clean and high-quality:
