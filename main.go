@@ -12,17 +12,19 @@ import (
 	"github.com/khrees/veilo/repositories"
 	"github.com/khrees/veilo/controllers"
 	"github.com/khrees/veilo/services"
+	"github.com/khrees/veilo/providers"
 	"github.com/resend/resend-go/v3"
 )
 
 type Config struct {
-	Port              string   `env:"PORT"`
-	WebhookSecret     string   `env:"WEBHOOK_SECRET,required"`
-	ResendAPIKey      string   `env:"RESEND_API_KEY"`
-	ReplyTokenTTLDays int      `env:"REPLY_TOKEN_TTL_DAYS" envDefault:"90"`
-	CORSOrigins       []string `env:"CORS_ORIGINS" envSeparator:"," envDefault:"*"`
-	RateLimit         int      `env:"RATE_LIMIT" envDefault:"60"`
-	APIKey            string   `env:"API_KEY"`
+	Port               string   `env:"PORT"`
+	WebhookSecret      string   `env:"WEBHOOK_SECRET,required"`
+	ResendAPIKey       string   `env:"RESEND_API_KEY"`
+	CloudflareAPIToken string   `env:"CLOUDFLARE_API_TOKEN"`
+	ReplyTokenTTLDays  int      `env:"REPLY_TOKEN_TTL_DAYS" envDefault:"90"`
+	CORSOrigins        []string `env:"CORS_ORIGINS" envSeparator:"," envDefault:"*"`
+	RateLimit          int      `env:"RATE_LIMIT" envDefault:"60"`
+	APIKey             string   `env:"API_KEY"`
 }
 
 func main() {
@@ -62,13 +64,24 @@ func main() {
 	forwardLogRepo := repositories.NewForwardLogRepository(db)
 	replyTokenRepo := repositories.NewReplyTokenRepository(db)
 
+	// Provider Layer
+	var emailProv providers.EmailProvider
+	var dnsProv providers.DNSProvider
+
+	if cfg.ResendAPIKey != "" {
+		resendClient := resend.NewClient(cfg.ResendAPIKey)
+		emailProv = providers.NewResendEmailProvider(resendClient)
+	}
+
+	if cfg.CloudflareAPIToken != "" {
+		dnsProv = providers.NewCloudflareDNSProvider(cfg.CloudflareAPIToken)
+	}
+
 	// Service Layer
-	domainSvc := services.NewDomainService(domainRepo)
+	domainSvc := services.NewDomainService(domainRepo, emailProv, dnsProv)
 	aliasSvc := services.NewAliasService(aliasRepo)
 	forwardLogSvc := services.NewForwardLogService(forwardLogRepo)
-
-	resendClient := resend.NewClient(cfg.ResendAPIKey)
-	webhookSvc := services.NewWebhookService(aliasRepo, forwardLogRepo, replyTokenRepo, resendClient, cfg.ReplyTokenTTLDays)
+	webhookSvc := services.NewWebhookService(aliasRepo, forwardLogRepo, replyTokenRepo, emailProv, cfg.ReplyTokenTTLDays)
 
 	server := NewServer(ServerConfig{
 		Port:        cfg.Port,

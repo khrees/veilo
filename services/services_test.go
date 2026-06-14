@@ -204,7 +204,7 @@ func (m *mockForwardLogRepository) Create(f *models.ForwardLog) error {
 
 func TestDomainService_Register(t *testing.T) {
 	mockRepo := &mockDomainRepository{}
-	svc := services.NewDomainService(mockRepo)
+	svc := services.NewDomainService(mockRepo, nil, nil)
 
 	err := svc.Register("test.com")
 	if err != nil {
@@ -226,7 +226,7 @@ func TestDomainService_Register(t *testing.T) {
 
 func TestDomainService_Remove(t *testing.T) {
 	mockRepo := &mockDomainRepository{}
-	svc := services.NewDomainService(mockRepo)
+	svc := services.NewDomainService(mockRepo, nil, nil)
 
 	// Register a domain first
 	err := svc.Register("test.com")
@@ -257,7 +257,7 @@ func TestDomainService_FindAll(t *testing.T) {
 			"2": {ID: uuid.New(), Name: "domain2.com", Verified: false},
 		},
 	}
-	svc := services.NewDomainService(mockRepo)
+	svc := services.NewDomainService(mockRepo, nil, nil)
 
 	domains, err := svc.FindAll()
 	if err != nil {
@@ -276,7 +276,7 @@ func TestDomainService_FindByID(t *testing.T) {
 			id.String(): {ID: id, Name: "test.com", Verified: true},
 		},
 	}
-	svc := services.NewDomainService(mockRepo)
+	svc := services.NewDomainService(mockRepo, nil, nil)
 
 	domain, err := svc.FindByID(id.String())
 	if err != nil {
@@ -294,7 +294,7 @@ func TestDomainService_FindByName(t *testing.T) {
 			"1": {Name: "test.com", Verified: true},
 		},
 	}
-	svc := services.NewDomainService(mockRepo)
+	svc := services.NewDomainService(mockRepo, nil, nil)
 
 	domain, err := svc.FindByName("test.com")
 	if err != nil {
@@ -471,7 +471,7 @@ func TestDomainService_ErrorHandling(t *testing.T) {
 	errTest := errors.New("repository error")
 
 	mockRepo := &mockDomainRepository{err: errTest}
-	svc := services.NewDomainService(mockRepo)
+	svc := services.NewDomainService(mockRepo, nil, nil)
 
 	// Test Register with error
 	err := svc.Register("test.com")

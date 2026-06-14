@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/services"
+	"github.com/khrees/veilo/providers"
 	"github.com/resend/resend-go/v3"
 	"github.com/stretchr/testify/mock"
 )
@@ -135,7 +136,7 @@ func TestWebhookService_ProcessEmailReceived_ForwardFlow_Success(t *testing.T) {
 	parsedURL, _ := url.Parse(resendServer.URL)
 	resendClient.BaseURL = parsedURL
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, resendClient, 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90)
 
 	// Inputs
 	input := services.EmailReceivedInput{
@@ -265,7 +266,7 @@ func TestWebhookService_ProcessEmailReceived_ReplyFlow_Success(t *testing.T) {
 	parsedURL, _ := url.Parse(resendServer.URL)
 	resendClient.BaseURL = parsedURL
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, resendClient, 90)
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90)
 
 	input := services.EmailReceivedInput{
 		EmailID: "email_reply",

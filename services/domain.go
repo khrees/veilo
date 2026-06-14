@@ -2,7 +2,12 @@
 package services
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/providers"
 	"github.com/khrees/veilo/repositories"
 )
 
@@ -18,19 +23,75 @@ type IDomainService interface {
 // domainService implements IDomainService
 type domainService struct {
 	domainRepo repositories.DomainRepository
+	emailProv  providers.EmailProvider
+	dnsProv    providers.DNSProvider
 }
 
-// NewDomainService will instantiate DomainService
-func NewDomainService(domainRepo repositories.DomainRepository) IDomainService {
+// NewDomainService will instantiate DomainService using generic providers
+func NewDomainService(
+	domainRepo repositories.DomainRepository,
+	emailProv providers.EmailProvider,
+	dnsProv providers.DNSProvider,
+) IDomainService {
 	return &domainService{
 		domainRepo: domainRepo,
+		emailProv:  emailProv,
+		dnsProv:    dnsProv,
 	}
 }
 
-// Register creates a new domain
+// Register creates a new domain, registers in email provider, configures DNS, and triggers verification
 func (d *domainService) Register(domainName string) error {
+	// If emailProv is nil, fallback to database-only registration
+	if d.emailProv == nil {
+		domain := &models.Domain{
+			Name:     domainName,
+			Verified: false,
+		}
+		log.Info("please configure an email provider, falling back to database only creation")
+		return d.domainRepo.Create(domain)
+	}
+
+	ctx := context.Background()
+
+	// 1. Register domain in email provider
+	res, err := d.emailProv.RegisterDomain(ctx, domainName)
+	if err != nil {
+		return fmt.Errorf("failed to register domain in email provider: %w", err)
+	}
+
+	// 2. Configure DNS if dnsProv is set
+	if d.dnsProv != nil {
+		dnsRecords := make([]providers.DNSRecord, 0, len(res.Records))
+		for _, rec := range res.Records {
+			dnsRecords = append(dnsRecords, providers.DNSRecord{
+				Type:     rec.Type,
+				Name:     rec.Name,
+				Value:    rec.Value,
+				Priority: rec.Priority,
+			})
+		}
+
+		err = d.dnsProv.ConfigureDNS(ctx, domainName, dnsRecords)
+		if err != nil {
+			log.Errorf("failed to setup DNS automatically: %v", err)
+		} else {
+			log.Infof("successfully configured DNS records for %s", domainName)
+
+			// 3. Trigger verification check in email provider
+			_, verifyErr := d.emailProv.VerifyDomain(ctx, res.DomainID)
+			if verifyErr != nil {
+				log.Errorf("failed to trigger domain verification: %v", verifyErr)
+			}
+		}
+	}
+
+	// Check current status in email provider
+	verified, _ := d.emailProv.VerifyDomain(ctx, res.DomainID)
+
 	domain := &models.Domain{
-		Name: domainName,
+		Name:     domainName,
+		Verified: verified,
 	}
 
 	return d.domainRepo.Create(domain)

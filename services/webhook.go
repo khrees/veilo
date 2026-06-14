@@ -11,8 +11,8 @@ import (
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
+	"github.com/khrees/veilo/providers"
 	"github.com/khrees/veilo/repositories"
-	"github.com/resend/resend-go/v3"
 )
 
 type EmailReceivedInput struct {
@@ -31,7 +31,7 @@ type webhookService struct {
 	aliasRepo         repositories.AliasRepository
 	forwardLogRepo    repositories.ForwardLogRepository
 	replyTokenRepo    repositories.ReplyTokenRepository
-	resendClient      *resend.Client
+	emailProv         providers.EmailProvider
 	replyTokenTTLDays int
 }
 
@@ -39,14 +39,14 @@ func NewWebhookService(
 	aliasRepo repositories.AliasRepository,
 	forwardLogRepo repositories.ForwardLogRepository,
 	replyTokenRepo repositories.ReplyTokenRepository,
-	resendClient *resend.Client,
+	emailProv providers.EmailProvider,
 	replyTokenTTLDays int,
 ) IWebhookService {
 	return &webhookService{
 		aliasRepo:         aliasRepo,
 		forwardLogRepo:    forwardLogRepo,
 		replyTokenRepo:    replyTokenRepo,
-		resendClient:      resendClient,
+		emailProv:         emailProv,
 		replyTokenTTLDays: replyTokenTTLDays,
 	}
 }
@@ -165,26 +165,24 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 		"X-Forwarded-To":  alias.Address,
 	}
 
-	// Fetch full received email content via Resend SDK
-	receivedEmail, err := s.resendClient.Emails.Receiving.GetWithContext(ctx, input.EmailID)
+	// Fetch full received email content via generic email provider
+	receivedEmail, err := s.emailProv.GetReceivedEmail(ctx, input.EmailID)
 	if err != nil {
-		log.Errorf("failed to fetch received email from Resend (ID: %s): %v", input.EmailID, err)
+		log.Errorf("failed to fetch received email from provider (ID: %s): %v", input.EmailID, err)
 		return fmt.Errorf("failed to fetch email content: %w", err)
 	}
 
-	// 8. Send via Resend SDK to alias.real_email
-	params := &resend.SendEmailRequest{
+	// 8. Send via email provider to alias.real_email
+	_, err = s.emailProv.SendEmail(ctx, providers.SendEmailInput{
 		From:    newFrom,
 		To:      []string{alias.RealEmail},
 		Subject: receivedEmail.Subject,
 		Html:    receivedEmail.Html,
 		Text:    receivedEmail.Text,
 		Headers: headersMap,
-	}
-
-	_, err = s.resendClient.Emails.SendWithContext(ctx, params)
+	})
 	if err != nil {
-		log.Errorf("failed to forward email via Resend: %v", err)
+		log.Errorf("failed to forward email via provider: %v", err)
 		return fmt.Errorf("failed to forward email: %w", err)
 	}
 
@@ -229,28 +227,26 @@ func (s *webhookService) handleReplyFlow(ctx context.Context, input EmailReceive
 		return nil
 	}
 
-	// Fetch full received email content via Resend SDK
-	receivedEmail, err := s.resendClient.Emails.Receiving.GetWithContext(ctx, input.EmailID)
+	// Fetch full received email content via generic email provider
+	receivedEmail, err := s.emailProv.GetReceivedEmail(ctx, input.EmailID)
 	if err != nil {
-		log.Errorf("failed to fetch received email from Resend (ID: %s): %v", input.EmailID, err)
+		log.Errorf("failed to fetch received email from provider (ID: %s): %v", input.EmailID, err)
 		return fmt.Errorf("failed to fetch email content: %w", err)
 	}
 
 	// 7. Rewrite headers:
 	//    - From: alias address
 	//    - To:   reply_token.original_sender
-	// 8. Send via Resend SDK
-	params := &resend.SendEmailRequest{
+	// 8. Send via email provider
+	_, err = s.emailProv.SendEmail(ctx, providers.SendEmailInput{
 		From:    alias.Address,
 		To:      []string{replyToken.OriginalSender},
 		Subject: receivedEmail.Subject,
 		Html:    receivedEmail.Html,
 		Text:    receivedEmail.Text,
-	}
-
-	_, err = s.resendClient.Emails.SendWithContext(ctx, params)
+	})
 	if err != nil {
-		log.Errorf("failed to send reply email via Resend: %v", err)
+		log.Errorf("failed to send reply email via provider: %v", err)
 		return fmt.Errorf("failed to send reply: %w", err)
 	}
 
