@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "embed"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -21,6 +23,9 @@ import (
 	"github.com/khrees/veilo/controllers"
 	"gorm.io/gorm"
 )
+
+//go:embed install.sh
+var installScript string
 
 // ServerConfig groups configuration values needed by the HTTP server.
 type ServerConfig struct {
@@ -144,6 +149,16 @@ func registerMiddleware(app *fiber.App, cfg ServerConfig) {
 func registerRoutes(app *fiber.App, deps controllers.RouteDeps) {
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Hello, World 👋!")
+	})
+
+	app.Get("/install", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "text/plain; charset=utf-8")
+		return c.SendString(installScript)
+	})
+
+	app.Get("/install.sh", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "text/plain; charset=utf-8")
+		return c.SendString(installScript)
 	})
 
 	controllers.SetupRoutes(app, deps)

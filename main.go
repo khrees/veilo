@@ -19,7 +19,7 @@ import (
 )
 
 type Config struct {
-	Port               string   `env:"PORT"`
+	Port               string   `env:"PORT" envDefault:"8084"`
 	WebhookSecret      string   `env:"WEBHOOK_SECRET"`
 	WebhookURL         string   `env:"WEBHOOK_URL"`
 	ResendAPIKey       string   `env:"RESEND_API_KEY"`
@@ -29,6 +29,7 @@ type Config struct {
 	RateLimit          int      `env:"RATE_LIMIT" envDefault:"60"`
 	APIKey             string   `env:"API_KEY"`
 	ViaBrandName       string   `env:"VIA_BRAND_NAME" envDefault:"Veilo"`
+	AppEnv             string   `env:"APP_ENV"`
 }
 
 func main() {
@@ -44,7 +45,11 @@ func startServer() {
 	}
 
 	if cfg.APIKey == "" {
-		log.Warn("API_KEY is not set — all /v1 endpoints are publicly accessible")
+		if cfg.AppEnv == "production" {
+			log.Fatal("API_KEY must be set in production mode")
+		} else {
+			log.Warn("API_KEY is not set — all /v1 endpoints are publicly accessible")
+		}
 	}
 	if len(cfg.CORSOrigins) == 1 && cfg.CORSOrigins[0] == "*" {
 		log.Warn("CORS_ORIGINS is set to wildcard (*) — all origins are allowed")

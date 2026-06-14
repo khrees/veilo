@@ -76,6 +76,10 @@ Create a `.env` file in the root directory (based on `.env.example`):
 ```ini
 # Server
 PORT=8084
+APP_ENV=development # Set to "production" to enforce API_KEY check
+
+# Security
+API_KEY=your_secure_api_key # ENFORCED in production mode
 
 # Database Config
 DB_HOST=localhost
@@ -92,11 +96,11 @@ RESEND_API_KEY=re_your_resend_api_key
 CLOUDFLARE_API_TOKEN=cf_your_cloudflare_token
 
 # Webhook URL of this server for automatically registering with Resend on startup
-# e.g., https://smee.io/your-id or https://your-domain.com
+# (Leave EMPTY in production to prevent auto-creation and logging of signing secrets)
 WEBHOOK_URL=https://smee.io/your-unique-channel-id
 
 # Webhook secret (Svix signing secret from Resend)
-# Leave empty initially. If WEBHOOK_URL is set, Veilo will auto-create the webhook in Resend and print this secret in the logs.
+# Manually configured on Render/Railway using the secret from Resend dashboard
 WEBHOOK_SECRET=
 
 # Global brand name used as suffix in forwarded emails (default: Veilo)
@@ -109,6 +113,17 @@ REPLY_TOKEN_TTL_DAYS=90
 CORS_ORIGINS=*
 RATE_LIMIT=60
 ```
+
+#### 🔒 Production Security Rules
+
+To run in production mode, you must explicitly set the `APP_ENV` environment variable to `production`.
+
+In `production` mode:
+1. **API Key Enforcement:** The application will fail to start if `API_KEY` is not set. All `/v1` endpoints (except the inbound webhook) will require `Authorization: Bearer <your_api_key>` headers.
+2. **Webhook Security:** To prevent webhook signing secrets from being printed to production server logs on boot, you must:
+   * Leave `WEBHOOK_URL` **empty** or undefined in your hosting platform (AWS, Render, Railway, etc.).
+   * Manually create the webhook endpoint in the Resend Dashboard pointing to `https://yourdomain.com/webhook/inbound`.
+   * Securely configure the webhook secret in the `WEBHOOK_SECRET` environment variable.
 
 ### 🏃 Running locally
 
@@ -130,66 +145,79 @@ Veilo includes a unified CLI to manage your email shield directly from the termi
 
 ### Installation & Configuration
 
-1. Compile the binary from source:
-   ```bash
-   go build -o veilo
-   ```
+#### Quick Install (macOS / Linux / WSL)
+To download and install the latest compiled release binary automatically:
+```bash
+curl -sSfL https://veilo.khrees.com/install | sh
+```
+This command downloads the correct build for your OS and CPU architecture, makes it executable, and moves it to `/usr/local/bin`.
 
-2. Set your Veilo instance's API URL, credentials, and defaults:
-   ```bash
-   ./veilo config set api-url http://localhost:8084/v1
-   ./veilo config set api-key your_api_key
-   ./veilo config set default-domain yourdomain.com
-   ./veilo config set default-email your-inbox@gmail.com
-   ```
+#### Compile from Source
+To compile the binary directly from source:
+```bash
+go build -o veilo
+```
 
-3. View your configuration settings:
-   ```bash
-   ./veilo config show
-   ```
+#### Configuration
+
+After installation, set up your Veilo CLI to connect to your own self-hosted Veilo API instance (e.g. `https://your-veilo-domain.com/v1` or local dev `http://localhost:8084/v1`), provide your API key, and configure default fallback values:
+```bash
+# Configure the API URL and credentials (point to your self-hosted instance)
+veilo config set api-url https://your-veilo-domain.com/v1
+veilo config set api-key your_api_key
+
+# Configure your defaults for quick alias creation
+veilo config set default-domain yourdomain.com
+veilo config set default-email your-inbox@gmail.com
+```
+
+You can view your active configuration using:
+```bash
+veilo config show
+```
 
 ### CLI Commands
 
 #### Create an Alias
 Create an alias with auto-generated values, or customize its properties and self-destruct limits:
 ```bash
-# Creative auto-generated creative slug alias
-./veilo create
+# Create an alias with an auto-generated creative slug
+veilo create
 
 # Create with custom slug, domain, and real destination email
-./veilo create --slug custom-slug --domain yourdomain.com --email me@gmail.com
+veilo create --slug custom-slug --domain yourdomain.com --email me@gmail.com
 
 # Create an alias that expires in 24 hours (supports durations e.g., 12h, 7d, 30d, or RFC3339 timestamp)
-./veilo create --expires-at 24h
+veilo create --expires-at 24h
 
 # Create an alias that self-destructs (auto-disables) after forwarding 5 emails
-./veilo create --max-forwards 5
+veilo create --max-forwards 5
 ```
 
 #### List & Manage Aliases
 ```bash
 # List all registered aliases
-./veilo list
+veilo list
 
 # List only enabled aliases
-./veilo list --enabled
+veilo list --enabled
 
 # Get specific alias details (displays expires_at, max_forwards, forwarded count)
-./veilo get <alias-address-or-id>
+veilo get <alias-address-or-id>
 
 # Enable / Disable / Delete an alias
-./veilo enable <alias-address>
-./veilo disable <alias-address>
-./veilo delete <alias-address>
+veilo enable <alias-address>
+veilo disable <alias-address>
+veilo delete <alias-address>
 ```
 
 #### View Statistics & Logs
 ```bash
 # View global stats (shows Total Aliases, Total Forwarded, Total Blocked, Trackers Blocked)
-./veilo stats
+veilo stats
 
 # View forward logs for an alias (shows sender, direction, status, and trackers blocked per email)
-./veilo logs <alias-address>
+veilo logs <alias-address>
 ```
 
 ---
@@ -267,7 +295,12 @@ Veilo automatically manages and configures webhooks on Resend for you:
 
 ## 🐳 Docker & Production Deployment
 
-Veilo can be easily containerized and deployed to modern platforms like **Railway** or **Render** using the provided `Dockerfile`.
+Veilo can be easily containerized and deployed using the provided `Dockerfile`.
+
+### One-Click Cloud Deployment
+Deploy the API and a PostgreSQL database instantly to your own account with a single click:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/khrees/veilo) &nbsp; [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/khrees/veilo)
 
 ### Build & Run Locally with Docker
 
@@ -281,21 +314,13 @@ Veilo can be easily containerized and deployed to modern platforms like **Railwa
    docker run -p 8084:8084 --env-file .env veilo
    ```
 
-### Deploying to Railway
+### Manual Cloud Deployment
 
-1. Click **New Project** on Railway.
-2. Select **Deploy from GitHub repo** and select your Veilo repository.
-3. Railway will automatically detect the root `Dockerfile` and start building the container.
-4. Go to **Variables** under your service and add all the environment variables defined in `.env` (such as `DB_HOST`, `RESEND_API_KEY`, etc.).
-5. Under **Settings**, generate a Domain to expose the server. Railway dynamically binds to the port using the `PORT` variable.
-
-### Deploying to Render
-
-1. Click **New +** and select **Web Service**.
-2. Connect your GitHub repository.
-3. Set the **Runtime** to `Docker`.
-4. Click **Advanced** and add all the environment variables defined in `.env`.
-5. Render will automatically detect the port exposed in the Dockerfile (`8084`) or bind to the dynamically injected `PORT`.
+If you prefer to configure the deployment manually on Railway, Render, AWS ECS, or any other container-hosting platform:
+1. Connect your GitHub repository to your hosting platform.
+2. Set the runtime environment to **Docker** (the platform will build automatically using the root `Dockerfile`).
+3. Provision a PostgreSQL database and configure the web service connection.
+4. Add the required environment variables (e.g., `DB_HOST`, `RESEND_API_KEY`, etc.) as documented in `.env.example`.
 
 ---
 

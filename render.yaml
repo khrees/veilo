@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: veilo-api
+    runtime: docker
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8084
+      - key: APP_ENV
+        value: production
+      - key: API_KEY
+        generateValue: true
+      - key: DB_HOST
+        fromDatabase:
+          name: veilo-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: veilo-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: veilo-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: veilo-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: veilo-db
+          property: database
+      - key: DB_SSLMODE
+        value: require
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+
+databases:
+  - name: veilo-db
+    plan: free
