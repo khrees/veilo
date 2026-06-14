@@ -1,27 +1,21 @@
 package controllers
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/khrees/veilo/services"
 )
 
-// IDomainController interface for domain controller
-type IDomainController interface {
-	RegisterRoutes(app *fiber.App)
-	RegisterDomain(ctx fiber.Ctx) error
-	ListDomains(ctx fiber.Ctx) error
-	GetDomain(ctx fiber.Ctx) error
-	RemoveDomain(ctx fiber.Ctx) error
-}
+var domainRegex = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`)
 
 type domainController struct {
-	domainSvc services.IDomainService
+	domainSvc services.DomainService
 }
 
 // NewDomainController creates a new domain controller
-func NewDomainController(domainSvc services.IDomainService) IDomainController {
+func NewDomainController(domainSvc services.DomainService) *domainController {
 	return &domainController{domainSvc: domainSvc}
 }
 
@@ -42,11 +36,14 @@ func (c *domainController) RegisterDomain(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
-	body.Domain = strings.TrimSpace(body.Domain)
+	body.Domain = strings.ToLower(strings.TrimSpace(body.Domain))
 	if body.Domain == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "domain name is required")
 	}
-	if !strings.Contains(body.Domain, ".") || strings.HasPrefix(body.Domain, ".") || strings.HasSuffix(body.Domain, ".") {
+	if len(body.Domain) > 253 {
+		return fiber.NewError(fiber.StatusBadRequest, "domain name exceeds maximum length")
+	}
+	if !domainRegex.MatchString(body.Domain) {
 		return fiber.NewError(fiber.StatusBadRequest, "domain must be a valid domain name (e.g. example.com)")
 	}
 

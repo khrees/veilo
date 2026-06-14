@@ -62,6 +62,10 @@ sequenceDiagram
 *   **PostgreSQL**: DB host (e.g. Supabase, RDS, local pg).
 *   **Resend API Key**: To handle forwarding, receiving, and verification.
 *   **Cloudflare API Token**: To configure DNS records automatically.
+*   **Custom Domain**: You must own a domain name to receive and reply to emails (e.g. `yourdomain.com`).
+    *   *Need a cheap domain?* You can buy one (like `.xyz`, `.top`, `.icu`, `.cfd`) for as cheap as $1 - $2/year on registrars like Porkbun, Namecheap, or Cloudflare Registrar.
+    *   *Want a free option?* You can register a free subdomain with full DNS control at [EU.org](https://nic.eu.org/) (e.g. `yourname.eu.org`), which can then be set up on Cloudflare. If you are a student, check out the [GitHub Student Developer Pack](https://education.github.com/pack) for a free domain from Namecheap or Name.com.
+
 
 ### ⚙️ Environment Variables
 

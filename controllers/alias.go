@@ -1,9 +1,6 @@
 package controllers
 
 import (
-	"crypto/rand"
-	"fmt"
-	"math/big"
 	"net/mail"
 	"strings"
 
@@ -12,22 +9,12 @@ import (
 	"github.com/khrees/veilo/services"
 )
 
-// IAliasController interface for alias controller
-type IAliasController interface {
-	RegisterRoutes(app *fiber.App)
-	CreateAlias(ctx fiber.Ctx) error
-	ListAliases(ctx fiber.Ctx) error
-	GetAlias(ctx fiber.Ctx) error
-	UpdateAlias(ctx fiber.Ctx) error
-	DeleteAlias(ctx fiber.Ctx) error
-}
-
 type aliasController struct {
-	aliasSvc services.IAliasService
+	aliasSvc services.AliasService
 }
 
 // NewAliasController creates a new alias controller
-func NewAliasController(aliasSvc services.IAliasService) IAliasController {
+func NewAliasController(aliasSvc services.AliasService) *aliasController {
 	return &aliasController{aliasSvc: aliasSvc}
 }
 
@@ -52,43 +39,24 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		Enabled     *bool   `json:"enabled,omitempty"`
 	}
 	if err := ctx.Bind().Body(&body); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
 	body.Address = strings.TrimSpace(body.Address)
 	body.Slug = strings.TrimSpace(body.Slug)
-	body.Domain = strings.TrimSpace(body.Domain)
+	body.Domain = strings.ToLower(strings.TrimSpace(body.Domain))
 	body.RealEmail = strings.TrimSpace(body.RealEmail)
 
-	// If slug is empty but address is provided, extract slug from address
-	if body.Slug == "" && body.Address != "" {
-		parts := strings.Split(body.Address, "@")
-		if len(parts) > 0 {
-			body.Slug = parts[0]
-		}
-	}
-
-	// If slug is still empty, generate a creative one
-	if body.Slug == "" {
-		body.Slug = generateCreativeSlug()
-	}
-
-	// If address is empty, construct it using slug and domain
-	if body.Address == "" {
-		if body.Domain == "" {
-			return fiber.NewError(fiber.StatusBadRequest, "domain is required to generate address when address is empty")
-		}
-		body.Address = fmt.Sprintf("%s@%s", body.Slug, body.Domain)
-	}
-
-	if body.Address == "" || body.Slug == "" || body.Domain == "" || body.RealEmail == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "address, slug, domain, and real_email are required")
+	if body.Domain == "" || body.RealEmail == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "domain and real_email are required")
 	}
 	if _, err := mail.ParseAddress(body.RealEmail); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "real_email must be a valid email address")
 	}
-	if _, err := mail.ParseAddress(body.Address); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "address must be a valid email address")
+	if body.Address != "" {
+		if _, err := mail.ParseAddress(body.Address); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "address must be a valid email address")
+		}
 	}
 
 	enabled := true
@@ -167,7 +135,7 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 	}
 
 	if err := ctx.Bind().Body(&body); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
 	updates := make(map[string]any)
@@ -207,30 +175,4 @@ func (c *aliasController) DeleteAlias(ctx fiber.Ctx) error {
 		return err
 	}
 	return SendSuccess(ctx, fiber.StatusOK, "Alias deleted successfully", nil)
-}
-
-var adjectives = []string{
-	"glowing", "radiant", "whispering", "silent", "frosty", "golden",
-	"silver", "crimson", "azure", "mystic", "shadowy", "stellar",
-	"cosmic", "wild", "gentle", "bouncy", "jolly", "merry", "speedy",
-	"vibrant", "serene", "dusk", "dawn", "misty", "stormy", "cloudy",
-}
-
-var nouns = []string{
-	"umbrella", "forest", "sunset", "river", "mountain", "ocean",
-	"breeze", "galaxy", "comet", "nebula", "meadow", "canyon",
-	"beacon", "harbor", "castle", "fortress", "glade", "oasis",
-	"pioneer", "valley", "summit", "island", "desert", "tundra",
-}
-
-func generateCreativeSlug() string {
-	adjIdx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(adjectives))))
-	nounIdx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(nouns))))
-	num, _ := rand.Int(rand.Reader, big.NewInt(1000)) // 0 to 999
-
-	slug := fmt.Sprintf("%s-%s-%03d", adjectives[adjIdx.Int64()], nouns[nounIdx.Int64()], num.Int64())
-	if len(slug) > 25 {
-		return slug[:25]
-	}
-	return slug
 }

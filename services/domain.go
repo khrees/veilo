@@ -4,7 +4,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/khrees/veilo/models"
@@ -12,18 +11,17 @@ import (
 	"github.com/khrees/veilo/repositories"
 )
 
-// IDomainService interface for domain operations
-type IDomainService interface {
+// DomainService interface for domain operations
+type DomainService interface {
 	Register(domainName string) error
 	Remove(domainName string) error
 	FindAll() ([]models.Domain, error)
 	FindByID(id string) (*models.Domain, error)
 	FindByName(name string) (*models.Domain, error)
 	VerifyDomains(ctx context.Context) error
-	StartVerificationWorker(ctx context.Context, interval time.Duration)
 }
 
-// domainService implements IDomainService
+// domainService implements DomainService
 type domainService struct {
 	domainRepo repositories.DomainRepository
 	emailProv  providers.EmailProvider
@@ -35,7 +33,7 @@ func NewDomainService(
 	domainRepo repositories.DomainRepository,
 	emailProv providers.EmailProvider,
 	dnsProv providers.DNSProvider,
-) IDomainService {
+) DomainService {
 	return &domainService{
 		domainRepo: domainRepo,
 		emailProv:  emailProv,
@@ -165,21 +163,4 @@ func (d *domainService) VerifyDomains(ctx context.Context) error {
 	return nil
 }
 
-func (d *domainService) StartVerificationWorker(ctx context.Context, interval time.Duration) {
-	if d.emailProv == nil {
-		return
-	}
 
-	ticker := time.NewTicker(interval)
-	go func() {
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				_ = d.VerifyDomains(ctx)
-			}
-		}
-	}()
-}

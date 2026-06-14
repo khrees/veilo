@@ -79,7 +79,7 @@ func TestResendEmailProvider_RegisterDomain_Success(t *testing.T) {
 	u, _ := url.Parse(server.URL)
 	client.BaseURL = u
 
-	prov := NewResendEmailProvider(client)
+	prov := NewResendEmailProvider(client, "mock-key")
 	res, err := prov.RegisterDomain(context.Background(), "example.com")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -126,7 +126,7 @@ func TestResendEmailProvider_VerifyDomain(t *testing.T) {
 	u, _ := url.Parse(server.URL)
 	client.BaseURL = u
 
-	prov := NewResendEmailProvider(client)
+	prov := NewResendEmailProvider(client, "mock-key")
 	verified, err := prov.VerifyDomain(context.Background(), "dom_123")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -159,7 +159,7 @@ func TestResendEmailProvider_GetReceivedEmail(t *testing.T) {
 	u, _ := url.Parse(server.URL)
 	client.BaseURL = u
 
-	prov := NewResendEmailProvider(client)
+	prov := NewResendEmailProvider(client, "mock-key")
 	email, err := prov.GetReceivedEmail(context.Background(), "email_123")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -194,7 +194,7 @@ func TestResendEmailProvider_SendEmail(t *testing.T) {
 	u, _ := url.Parse(server.URL)
 	client.BaseURL = u
 
-	prov := NewResendEmailProvider(client)
+	prov := NewResendEmailProvider(client, "mock-key")
 	id, err := prov.SendEmail(context.Background(), SendEmailInput{
 		From:    "sender@example.com",
 		To:      []string{"receiver@example.com"},
@@ -236,7 +236,7 @@ func TestResendEmailProvider_EnsureWebhook_Exists(t *testing.T) {
 	u, _ := url.Parse(server.URL)
 	client.BaseURL = u
 
-	prov := NewResendEmailProvider(client)
+	prov := NewResendEmailProvider(client, "mock-key")
 	id, secret, err := prov.EnsureWebhook(context.Background(), "https://example.com/webhook")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -283,7 +283,7 @@ func TestResendEmailProvider_EnsureWebhook_Created(t *testing.T) {
 	u, _ := url.Parse(server.URL)
 	client.BaseURL = u
 
-	prov := NewResendEmailProvider(client)
+	prov := NewResendEmailProvider(client, "mock-key")
 	id, secret, err := prov.EnsureWebhook(context.Background(), "https://example.com/webhook")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)

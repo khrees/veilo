@@ -16,7 +16,6 @@ import (
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/services"
 	"github.com/stretchr/testify/mock"
-	"strings"
 )
 
 // Mock service interfaces
@@ -426,9 +425,8 @@ func TestAliasController_CreateAlias_WithGeneratedSlug(t *testing.T) {
 	mockSvc.On("Create", mock.MatchedBy(func(input services.AliasCreateInput) bool {
 		return input.Domain == "test.com" &&
 			input.RealEmail == "real@example.com" &&
-			input.Slug != "" &&
-			len(input.Slug) <= 25 &&
-			strings.HasPrefix(input.Address, input.Slug+"@")
+			input.Slug == "" &&
+			input.Address == ""
 	})).Return(&models.Alias{
 		ID:        uuid.New(),
 		Address:   "generated@test.com",

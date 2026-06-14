@@ -39,6 +39,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if cfg.APIKey == "" {
+		log.Warn("API_KEY is not set — all /v1 endpoints are publicly accessible")
+	}
+	if len(cfg.CORSOrigins) == 1 && cfg.CORSOrigins[0] == "*" {
+		log.Warn("CORS_ORIGINS is set to wildcard (*) — all origins are allowed")
+	}
+
 	dbCfg := &config.DBConfig{}
 	if err := env.Parse(dbCfg); err != nil {
 		log.Fatal(err)
@@ -74,7 +81,7 @@ func main() {
 
 	if cfg.ResendAPIKey != "" {
 		resendClient := resend.NewClient(cfg.ResendAPIKey)
-		emailProv = providers.NewResendEmailProvider(resendClient)
+		emailProv = providers.NewResendEmailProvider(resendClient, cfg.ResendAPIKey)
 	}
 
 	if cfg.CloudflareAPIToken != "" {

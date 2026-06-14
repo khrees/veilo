@@ -5,20 +5,20 @@ import (
 	"github.com/khrees/veilo/repositories"
 )
 
-// IForwardLogService interface for forward log operations
-type IForwardLogService interface {
+// ForwardLogService interface for forward log operations
+type ForwardLogService interface {
 	Create(f *models.ForwardLog) error
 	GetByAliasID(aliasID string, limit, offset int) ([]models.ForwardLog, error)
 	GetStats() (*models.Stats, error)
 }
 
-// forwardLogService implements IForwardLogService
+// forwardLogService implements ForwardLogService
 type forwardLogService struct {
 	forwardLogRepo repositories.ForwardLogRepository
 }
 
 // NewForwardLogService will instantiate ForwardLogService
-func NewForwardLogService(forwardLogRepo repositories.ForwardLogRepository) IForwardLogService {
+func NewForwardLogService(forwardLogRepo repositories.ForwardLogRepository) ForwardLogService {
 	return &forwardLogService{
 		forwardLogRepo: forwardLogRepo,
 	}

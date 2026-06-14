@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
@@ -396,42 +395,6 @@ func TestDomainService_VerifyDomains(t *testing.T) {
 	}
 }
 
-func TestDomainService_StartVerificationWorker(t *testing.T) {
-	id := uuid.New()
-	mockRepo := &mockDomainRepository{
-		domains: map[string]*models.Domain{
-			id.String(): {ID: id, Name: "test.com", Verified: false},
-		},
-	}
-
-	mockEmail := &mockEmailProvider{
-		registerDomainFunc: func(ctx context.Context, name string) (*providers.RegisterDomainResult, error) {
-			return &providers.RegisterDomainResult{
-				DomainID: "dom_123",
-				Verified: false,
-			}, nil
-		},
-		verifyDomainFunc: func(ctx context.Context, domID string) (bool, error) {
-			return true, nil
-		},
-	}
-
-	svc := services.NewDomainService(mockRepo, mockEmail, nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	svc.StartVerificationWorker(ctx, 2*time.Millisecond)
-
-	time.Sleep(15 * time.Millisecond)
-	cancel()
-
-	domain, err := mockRepo.FindByID(id.String())
-	if err != nil {
-		t.Fatalf("failed to find domain: %v", err)
-	}
-
-	if !domain.Verified {
-		t.Error("expected domain to be verified by the background worker")
-	}
-}
 
 func TestAliasService_Create(t *testing.T) {
 	mockRepo := &mockAliasRepository{}

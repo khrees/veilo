@@ -8,23 +8,17 @@ import (
 )
 
 const (
-	defaultLimit = 50
-	maxLimit     = 100
+	defaultLimit  = 50
+	maxLimit      = 100
 	defaultOffset = 0
 )
 
-// IForwardLogController interface for forward log controller
-type IForwardLogController interface {
-	RegisterRoutes(app *fiber.App)
-	GetForwardLogs(ctx fiber.Ctx) error
-}
-
 type forwardLogController struct {
-	forwardLogSvc services.IForwardLogService
+	forwardLogSvc services.ForwardLogService
 }
 
 // NewForwardLogController creates a new forward log controller
-func NewForwardLogController(forwardLogSvc services.IForwardLogService) IForwardLogController {
+func NewForwardLogController(forwardLogSvc services.ForwardLogService) *forwardLogController {
 	return &forwardLogController{forwardLogSvc: forwardLogSvc}
 }
 

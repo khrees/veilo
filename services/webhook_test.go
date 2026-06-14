@@ -141,7 +141,7 @@ func TestWebhookService_ProcessEmailReceived_ForwardFlow_Success(t *testing.T) {
 	parsedURL, _ := url.Parse(resendServer.URL)
 	resendClient.BaseURL = parsedURL
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90, "Veilo")
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient, "re_test123"), 90, "Veilo")
 
 	// Inputs
 	input := services.EmailReceivedInput{
@@ -273,7 +273,7 @@ func TestWebhookService_ProcessEmailReceived_ReplyFlow_Success(t *testing.T) {
 	parsedURL, _ := url.Parse(resendServer.URL)
 	resendClient.BaseURL = parsedURL
 
-	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient), 90, "Veilo")
+	svc := services.NewWebhookService(mockAlias, mockForwardLog, mockReplyToken, providers.NewResendEmailProvider(resendClient, "re_test123"), 90, "Veilo")
 
 	input := services.EmailReceivedInput{
 		EmailID: "email_reply",

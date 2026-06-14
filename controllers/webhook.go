@@ -93,7 +93,7 @@ type EmailBounced struct {
 
 type webhookController struct {
 	webhookSecret string
-	webhookSvc    services.IWebhookService
+	webhookSvc    services.WebhookService
 }
 
 // NewWebhookController creates a new webhook controller.

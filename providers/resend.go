@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,12 +14,14 @@ import (
 
 type resendEmailProvider struct {
 	client *resend.Client
+	apiKey string
 }
 
 // NewResendEmailProvider creates a new EmailProvider backed by Resend
-func NewResendEmailProvider(client *resend.Client) EmailProvider {
+func NewResendEmailProvider(client *resend.Client, apiKey string) EmailProvider {
 	return &resendEmailProvider{
 		client: client,
+		apiKey: apiKey,
 	}
 }
 
@@ -62,7 +63,7 @@ func (p *resendEmailProvider) RegisterDomain(ctx context.Context, domainName str
 	}
 
 	// 2. Always ensure receiving capability is enabled (PATCH API fallback)
-	apiKey := os.Getenv("RESEND_API_KEY")
+	apiKey := p.apiKey
 	if apiKey != "" {
 		patchURL := fmt.Sprintf("https://api.resend.com/domains/%s", domainID)
 		body := []byte(`{"capabilities": {"receiving": "enabled"}}`)

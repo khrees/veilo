@@ -9,10 +9,10 @@ import (
 )
 
 type RouteDeps struct {
-	DomainSvc     services.IDomainService
-	AliasSvc      services.IAliasService
-	ForwardLogSvc services.IForwardLogService
-	WebhookSvc    services.IWebhookService
+	DomainSvc     services.DomainService
+	AliasSvc      services.AliasService
+	ForwardLogSvc services.ForwardLogService
+	WebhookSvc    services.WebhookService
 	WebhookSecret string
 	APIKey        string
 }

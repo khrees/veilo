@@ -24,7 +24,7 @@ type EmailReceivedInput struct {
 	Subject   string
 }
 
-type IWebhookService interface {
+type WebhookService interface {
 	ProcessEmailReceived(ctx context.Context, input EmailReceivedInput) error
 	CleanupExpiredTokens(ctx context.Context) error
 }
@@ -45,7 +45,7 @@ func NewWebhookService(
 	emailProv providers.EmailProvider,
 	replyTokenTTLDays int,
 	viaBrandName string,
-) IWebhookService {
+) WebhookService {
 	return &webhookService{
 		aliasRepo:         aliasRepo,
 		forwardLogRepo:    forwardLogRepo,

@@ -39,6 +39,7 @@ func NewServer(cfg ServerConfig, deps controllers.RouteDeps) *server {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
+		BodyLimit:    1 << 20,
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			message := "an internal server error occurred"
@@ -121,6 +122,13 @@ func registerMiddleware(app *fiber.App, cfg ServerConfig) {
 		Format: "[${time}] ${status} - ${method} ${path}\n",
 	}))
 	app.Use(recover.New())
+	app.Use(func(c fiber.Ctx) error {
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("X-XSS-Protection", "1; mode=block")
+		c.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		return c.Next()
+	})
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: cfg.CORSOrigins,
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
