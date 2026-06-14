@@ -163,7 +163,9 @@ func TestWebhookService_ProcessEmailReceived_ForwardFlow_Success(t *testing.T) {
 		return t.AliasID == aliasUUID && t.OriginalSender == "john@example.com"
 	})).Return(nil)
 	mockAlias.On("Update", aliasUUID.String(), mock.MatchedBy(func(updates map[string]any) bool {
-		return updates["forward_count"] == 6
+		_, hasCount := updates["forward_count"]
+		_, hasTime := updates["last_used_at"]
+		return hasCount && hasTime
 	})).Return(nil)
 	mockForwardLog.On("Create", mock.MatchedBy(func(log *models.ForwardLog) bool {
 		return log.AliasID == aliasUUID && log.Direction == "inbound" && log.Status == "delivered"

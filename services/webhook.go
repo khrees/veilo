@@ -13,6 +13,7 @@ import (
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/providers"
 	"github.com/khrees/veilo/repositories"
+	"gorm.io/gorm"
 )
 
 type EmailReceivedInput struct {
@@ -86,10 +87,10 @@ func extractReplyToken(address string) (string, bool) {
 }
 
 func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailReceivedInput, toAddress string) error {
-	// 4. Lookup alias by address in Postgres
+	// Lookup alias by address in Postgres
 	alias, err := s.aliasRepo.FindByAddress(toAddress)
 
-	// 5. Not found or disabled → log as blocked, return nil (silent drop)
+	// Not found or disabled → log as blocked, return nil (silent drop)
 	if err != nil || alias == nil || !alias.Enabled {
 		log.Warnf("Forward blocked: alias %s not found or disabled (err: %v)", toAddress, err)
 
@@ -111,7 +112,7 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 		return nil
 	}
 
-	// 6. Rewrite headers:
+	// Rewrite headers:
 	parsedFrom, err := mail.ParseAddress(input.From)
 	senderName := ""
 	senderEmail := input.From
@@ -129,7 +130,7 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 	}
 	senderName = strings.ReplaceAll(senderName, "\"", "")
 
-	// 7. Create reply_token row in Postgres
+	// Create reply_token row in Postgres
 	expiresAt := time.Now().Add(time.Duration(s.replyTokenTTLDays) * 24 * time.Hour)
 	token := uuid.NewString()
 
@@ -156,7 +157,7 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 		return fmt.Errorf("failed to process reply token: %w", createErr)
 	}
 
-	newFrom := fmt.Sprintf("\"%s via Cloakee\" <%s>", senderName, alias.Address)
+	newFrom := fmt.Sprintf("\"%s via Veilo\" <%s>", senderName, alias.Address)
 	replyTo := fmt.Sprintf("reply+%s@%s", replyToken.Token, alias.Domain)
 
 	headersMap := map[string]string{
@@ -172,7 +173,7 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 		return fmt.Errorf("failed to fetch email content: %w", err)
 	}
 
-	// 8. Send via email provider to alias.real_email
+	// Send via email provider to alias.real_email
 	_, err = s.emailProv.SendEmail(ctx, providers.SendEmailInput{
 		From:    newFrom,
 		To:      []string{alias.RealEmail},
@@ -186,16 +187,16 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 		return fmt.Errorf("failed to forward email: %w", err)
 	}
 
-	// 9. Update aliases.forward_count, aliases.last_used_at
+	// Update aliases.forward_count, aliases.last_used_at
 	updates := map[string]any{
-		"forward_count": alias.ForwardCount + 1,
+		"forward_count": gorm.Expr("forward_count + 1"),
 		"last_used_at":  time.Now(),
 	}
 	if updateErr := s.aliasRepo.Update(alias.ID.String(), updates); updateErr != nil {
 		log.Errorf("failed to update alias stats: %v", updateErr)
 	}
 
-	// 10. Insert forward_log row (direction=inbound, status=delivered)
+	// Insert forward_log row (direction=inbound, status=delivered)
 	logEntry := &models.ForwardLog{
 		AliasID:   alias.ID,
 		Direction: "inbound",
@@ -211,10 +212,10 @@ func (s *webhookService) handleForwardFlow(ctx context.Context, input EmailRecei
 }
 
 func (s *webhookService) handleReplyFlow(ctx context.Context, input EmailReceivedInput, token string) error {
-	// 5. Lookup reply_token in Postgres
+	// Lookup reply_token in Postgres
 	replyToken, err := s.replyTokenRepo.FindByToken(token)
 
-	// 6. Not found or expired → drop silently
+	// Not found or expired → drop silently
 	if err != nil || replyToken == nil || replyToken.ExpiresAt.Before(time.Now()) {
 		log.Warnf("Reply blocked: token %s not found or expired (err: %v)", token, err)
 		return nil
@@ -234,10 +235,10 @@ func (s *webhookService) handleReplyFlow(ctx context.Context, input EmailReceive
 		return fmt.Errorf("failed to fetch email content: %w", err)
 	}
 
-	// 7. Rewrite headers:
+	// Rewrite headers:
 	//    - From: alias address
 	//    - To:   reply_token.original_sender
-	// 8. Send via email provider
+	// Send via email provider
 	_, err = s.emailProv.SendEmail(ctx, providers.SendEmailInput{
 		From:    alias.Address,
 		To:      []string{replyToken.OriginalSender},
@@ -250,7 +251,7 @@ func (s *webhookService) handleReplyFlow(ctx context.Context, input EmailReceive
 		return fmt.Errorf("failed to send reply: %w", err)
 	}
 
-	// 9. Insert forward_log row (direction=reply, status=delivered)
+	// Insert forward_log row (direction=reply, status=delivered)
 	senderEmail := extractEmailAddress(input.From)
 	logEntry := &models.ForwardLog{
 		AliasID:   alias.ID,

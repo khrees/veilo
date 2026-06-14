@@ -89,6 +89,12 @@ func (d *domainService) Register(domainName string) error {
 	// Check current status in email provider
 	verified, _ := d.emailProv.VerifyDomain(ctx, res.DomainID)
 
+	existing, err := d.domainRepo.FindByName(domainName)
+	if err == nil && existing != nil {
+		existing.Verified = verified
+		return d.domainRepo.Update(existing)
+	}
+
 	domain := &models.Domain{
 		Name:     domainName,
 		Verified: verified,

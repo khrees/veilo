@@ -15,6 +15,7 @@ import (
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/services"
 	"github.com/stretchr/testify/mock"
+	"strings"
 )
 
 // Mock service interfaces
@@ -380,6 +381,48 @@ func TestAliasController_CreateAlias_WithOptionalFields(t *testing.T) {
 		"real_email": "real@example.com",
 		"label":      "test-label",
 		"enabled":    false,
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/aliases", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected status %d, got %d", http.StatusCreated, resp.StatusCode)
+	}
+
+	mockSvc.AssertExpectations(t)
+}
+
+func TestAliasController_CreateAlias_WithGeneratedSlug(t *testing.T) {
+	mockSvc := new(mockAliasService)
+
+	mockSvc.On("Create", mock.MatchedBy(func(input services.AliasCreateInput) bool {
+		return input.Domain == "test.com" &&
+			input.RealEmail == "real@example.com" &&
+			input.Slug != "" &&
+			len(input.Slug) <= 25 &&
+			strings.HasPrefix(input.Address, input.Slug+"@")
+	})).Return(&models.Alias{
+		ID:        uuid.New(),
+		Address:   "generated@test.com",
+		Slug:      "generated",
+		Domain:    "test.com",
+		RealEmail: "real@example.com",
+		Enabled:   true,
+	}, nil)
+
+	app := createTestApp(controllers.RouteDeps{AliasSvc: mockSvc})
+
+	body := map[string]any{
+		"domain":     "test.com",
+		"real_email": "real@example.com",
 	}
 	jsonBody, _ := json.Marshal(body)
 

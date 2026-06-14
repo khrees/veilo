@@ -27,6 +27,14 @@ func (m *mockDomainRepository) Create(d *models.Domain) error {
 	return nil
 }
 
+func (m *mockDomainRepository) Update(d *models.Domain) error {
+	if m.err != nil {
+		return m.err
+	}
+	m.domains[d.ID.String()] = d
+	return nil
+}
+
 func (m *mockDomainRepository) Delete(id string) error {
 	if m.err != nil {
 		return m.err

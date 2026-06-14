@@ -7,6 +7,7 @@ import (
 
 type DomainRepository interface {
 	Create(d *models.Domain) error
+	Update(d *models.Domain) error
 	Delete(id string) error
 	FindAll() ([]models.Domain, error)
 	FindByID(id string) (*models.Domain, error)
@@ -23,6 +24,10 @@ func NewDomainRepository(db *gorm.DB) DomainRepository {
 
 func (r *domainRepository) Create(d *models.Domain) error {
 	return r.db.Create(d).Error
+}
+
+func (r *domainRepository) Update(d *models.Domain) error {
+	return r.db.Save(d).Error
 }
 
 func (r *domainRepository) Delete(id string) error {

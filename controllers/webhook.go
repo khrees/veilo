@@ -52,15 +52,15 @@ func ParseWebhookEvent(raw []byte) (WebhookEvent, error) {
 // ---------- Typed data structs ----------
 
 type EmailReceived struct {
-	EmailID     string        `json:"email_id"`
-	CreatedAt   time.Time     `json:"created_at"`
-	From        string        `json:"from"`
-	To          []string      `json:"to"`
-	Bcc         []string `json:"bcc"`
-	Cc          []string `json:"cc"`
-	MessageID   string        `json:"message_id"`
-	Subject     string        `json:"subject"`
-	Attachments []Attachment  `json:"attachments"`
+	EmailID     string       `json:"email_id"`
+	CreatedAt   time.Time    `json:"created_at"`
+	From        string       `json:"from"`
+	To          []string     `json:"to"`
+	Bcc         []string     `json:"bcc"`
+	Cc          []string     `json:"cc"`
+	MessageID   string       `json:"message_id"`
+	Subject     string       `json:"subject"`
+	Attachments []Attachment `json:"attachments"`
 }
 
 type Attachment struct {
@@ -107,6 +107,8 @@ func NewWebhookController(deps RouteDeps) *webhookController {
 // RegisterRoutes registers the webhook routes.
 func (c *webhookController) RegisterRoutes(app *fiber.App) {
 	app.Post("/webhook/inbound", c.HandleInboundWebhook)
+	// needed for testing with smee.io
+	app.Post("/:channel/webhook/inbound", c.HandleInboundWebhook)
 }
 
 // HandleInboundWebhook verifies the Svix signature and processes Resend webhook events.
@@ -134,7 +136,7 @@ func (c *webhookController) HandleInboundWebhook(ctx fiber.Ctx) error {
 	// Signature valid — parse the event.
 	webhook, err := ParseWebhookEvent(payload)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, "invalid webhook payload")
 	}
 
 	switch webhook.Type {

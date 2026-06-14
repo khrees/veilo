@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"crypto/subtle"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -33,7 +34,7 @@ func ApiKeyAuth(apiKey string) fiber.Handler {
 			token = authHeader[7:]
 		}
 
-		if token != apiKey {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(apiKey)) != 1 {
 			return SendError(c, fiber.StatusUnauthorized, "invalid API key", nil)
 		}
 

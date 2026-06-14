@@ -11,13 +11,15 @@ import (
 )
 
 type cloudflareDNSProvider struct {
-	token string
+	token   string
+	baseURL string
 }
 
 // NewCloudflareDNSProvider creates a new DNSProvider backed by Cloudflare REST API
 func NewCloudflareDNSProvider(token string) DNSProvider {
 	return &cloudflareDNSProvider{
-		token: token,
+		token:   token,
+		baseURL: "https://api.cloudflare.com",
 	}
 }
 
@@ -26,8 +28,13 @@ func (p *cloudflareDNSProvider) ConfigureDNS(ctx context.Context, domainName str
 		return fmt.Errorf("cloudflare API token is not configured")
 	}
 
+	baseURL := p.baseURL
+	if baseURL == "" {
+		baseURL = "https://api.cloudflare.com"
+	}
+
 	// 1. Lookup Zone ID by domain name
-	reqURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones?name=%s", url.QueryEscape(domainName))
+	reqURL := fmt.Sprintf("%s/client/v4/zones?name=%s", baseURL, url.QueryEscape(domainName))
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return err
@@ -79,7 +86,7 @@ func (p *cloudflareDNSProvider) ConfigureDNS(ctx context.Context, domainName str
 			return err
 		}
 
-		postURL := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/dns_records", zoneID)
+		postURL := fmt.Sprintf("%s/client/v4/zones/%s/dns_records", baseURL, zoneID)
 		postReq, err := http.NewRequestWithContext(ctx, "POST", postURL, bytes.NewBuffer(jsonBody))
 		if err != nil {
 			return err
@@ -92,6 +99,10 @@ func (p *cloudflareDNSProvider) ConfigureDNS(ctx context.Context, domainName str
 			return err
 		}
 		postResp.Body.Close()
+
+		if postResp.StatusCode < 200 || postResp.StatusCode >= 300 {
+			return fmt.Errorf("cloudflare dns record creation failed: status %d", postResp.StatusCode)
+		}
 	}
 
 	return nil

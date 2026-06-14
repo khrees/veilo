@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/resend/resend-go/v3"
 )
@@ -19,15 +20,48 @@ func NewResendEmailProvider(client *resend.Client) EmailProvider {
 }
 
 func (p *resendEmailProvider) RegisterDomain(ctx context.Context, domainName string) (*RegisterDomainResult, error) {
+	var domainID string
+	var domainStatus string
+	var domainRecords []resend.Record
+
 	res, err := p.client.Domains.CreateWithContext(ctx, &resend.CreateDomainRequest{
 		Name: domainName,
 	})
 	if err != nil {
-		return nil, err
+		errMsg := err.Error()
+		if strings.Contains(strings.ToLower(errMsg), "already") || strings.Contains(strings.ToLower(errMsg), "registered") {
+			list, listErr := p.client.Domains.ListWithContext(ctx)
+			if listErr == nil {
+				var found bool
+				for _, dom := range list.Data {
+					if dom.Name == domainName {
+						fullDom, getErr := p.client.Domains.GetWithContext(ctx, dom.Id)
+						if getErr == nil {
+							domainID = fullDom.Id
+							domainStatus = fullDom.Status
+							domainRecords = fullDom.Records
+							found = true
+							break
+						}
+					}
+				}
+				if !found {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	} else {
+		domainID = res.Id
+		domainStatus = res.Status
+		domainRecords = res.Records
 	}
 
-	records := make([]EmailRecord, 0, len(res.Records))
-	for _, rec := range res.Records {
+	records := make([]EmailRecord, 0, len(domainRecords))
+	for _, rec := range domainRecords {
 		var priority int
 		if rec.Priority.String() != "" {
 			pr, err := strconv.Atoi(rec.Priority.String())
@@ -44,9 +78,9 @@ func (p *resendEmailProvider) RegisterDomain(ctx context.Context, domainName str
 	}
 
 	return &RegisterDomainResult{
-		DomainID: res.Id,
+		DomainID: domainID,
 		Records:  records,
-		Verified: res.Status == "verified",
+		Verified: domainStatus == "verified",
 	}, nil
 }
 
