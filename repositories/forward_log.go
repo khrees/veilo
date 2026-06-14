@@ -59,5 +59,3 @@ func (r *forwardLogRepository) GetStats() (*models.Stats, error) {
 
 	return &s, nil
 }
-
-

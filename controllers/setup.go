@@ -1,3 +1,4 @@
+// Package controllers implements the HTTP endpoints, middlewares, routing, and request handlers for the Veilo API server.
 package controllers
 
 import (
@@ -17,8 +18,8 @@ type RouteDeps struct {
 	APIKey        string
 }
 
-// ApiKeyAuth provides simple bearer/api-key token auth middleware.
-func ApiKeyAuth(apiKey string) fiber.Handler {
+// APIKeyAuth provides simple bearer/api-key token auth middleware.
+func APIKeyAuth(apiKey string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		if apiKey == "" {
 			return c.Next()
@@ -45,7 +46,7 @@ func ApiKeyAuth(apiKey string) fiber.Handler {
 // SetupRoutes registers all route groups by instantiating and registering controllers.
 func SetupRoutes(app *fiber.App, deps RouteDeps) {
 	// Apply API-key middleware to all /v1 API routes
-	app.Use("/v1", ApiKeyAuth(deps.APIKey))
+	app.Use("/v1", APIKeyAuth(deps.APIKey))
 
 	domainController := NewDomainController(deps.DomainSvc)
 	domainController.RegisterRoutes(app)

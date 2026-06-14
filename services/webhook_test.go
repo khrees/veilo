@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
-	"github.com/khrees/veilo/services"
 	"github.com/khrees/veilo/providers"
+	"github.com/khrees/veilo/services"
 	"github.com/resend/resend-go/v3"
 	"github.com/stretchr/testify/mock"
 )

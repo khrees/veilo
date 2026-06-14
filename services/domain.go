@@ -65,12 +65,7 @@ func (d *domainService) Register(domainName string) error {
 	if d.dnsProv != nil {
 		dnsRecords := make([]providers.DNSRecord, 0, len(res.Records))
 		for _, rec := range res.Records {
-			dnsRecords = append(dnsRecords, providers.DNSRecord{
-				Type:     rec.Type,
-				Name:     rec.Name,
-				Value:    rec.Value,
-				Priority: rec.Priority,
-			})
+			dnsRecords = append(dnsRecords, providers.DNSRecord(rec))
 		}
 
 		err = d.dnsProv.ConfigureDNS(ctx, domainName, dnsRecords)
@@ -162,5 +157,3 @@ func (d *domainService) VerifyDomains(ctx context.Context) error {
 	}
 	return nil
 }
-
-

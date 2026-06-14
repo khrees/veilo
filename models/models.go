@@ -70,11 +70,11 @@ type ReplyToken struct {
 func (ReplyToken) TableName() string { return "reply_tokens" }
 
 type ForwardLog struct {
-	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AliasID   uuid.UUID `json:"alias_id" gorm:"type:uuid;not null;index"`
-	Direction string    `json:"direction" gorm:"type:text;not null;check:direction IN ('inbound','reply')"`
-	Sender    *string   `json:"sender,omitempty" gorm:"type:text"`
-	Subject   *string   `json:"subject,omitempty" gorm:"type:text"`
+	ID              uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AliasID         uuid.UUID `json:"alias_id" gorm:"type:uuid;not null;index"`
+	Direction       string    `json:"direction" gorm:"type:text;not null;check:direction IN ('inbound','reply')"`
+	Sender          *string   `json:"sender,omitempty" gorm:"type:text"`
+	Subject         *string   `json:"subject,omitempty" gorm:"type:text"`
 	Status          string    `json:"status" gorm:"type:text;not null;check:status IN ('delivered','blocked','bounced')"`
 	TrackersBlocked int       `json:"trackers_blocked" gorm:"not null;default:0"`
 	CreatedAt       time.Time `json:"created_at" gorm:"not null;default:now();index"`
@@ -95,4 +95,3 @@ type Stats struct {
 	TotalBlocked         int64 `json:"total_blocked"`
 	TotalTrackersBlocked int64 `json:"total_trackers_blocked"`
 }
-

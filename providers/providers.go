@@ -1,3 +1,4 @@
+// Package providers defines interfaces and implementations for external service providers (e.g. DNS, Email).
 package providers
 
 import "context"

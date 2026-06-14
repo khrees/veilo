@@ -644,7 +644,6 @@ func TestAliasController_DeleteAlias(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
-
 func TestForwardLogController_GetForwardLogs(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
 	aliasID := uuid.New()
@@ -826,9 +825,9 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-func TestApiKeyAuth(t *testing.T) {
+func TestAPIKeyAuth(t *testing.T) {
 	app := fiber.New()
-	app.Use("/v1", controllers.ApiKeyAuth("test_api_key"))
+	app.Use("/v1", controllers.APIKeyAuth("test_api_key"))
 	app.Get("/v1/test", func(c fiber.Ctx) error {
 		return c.SendString("success")
 	})

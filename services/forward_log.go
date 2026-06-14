@@ -37,5 +37,3 @@ func (f *forwardLogService) GetByAliasID(aliasID string, limit, offset int) ([]m
 func (f *forwardLogService) GetStats() (*models.Stats, error) {
 	return f.forwardLogRepo.GetStats()
 }
-
-

@@ -148,4 +148,3 @@ func registerRoutes(app *fiber.App, deps controllers.RouteDeps) {
 
 	controllers.SetupRoutes(app, deps)
 }
-

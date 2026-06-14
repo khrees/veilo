@@ -1,3 +1,4 @@
+// Package repositories provides database data access layers for Veilo models.
 package repositories
 
 import (

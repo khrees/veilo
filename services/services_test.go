@@ -226,11 +226,11 @@ func (m *mockForwardLogRepository) Create(f *models.ForwardLog) error {
 }
 
 type mockEmailProvider struct {
-	registerDomainFunc func(ctx context.Context, domainName string) (*providers.RegisterDomainResult, error)
-	verifyDomainFunc   func(ctx context.Context, domainID string) (bool, error)
+	registerDomainFunc   func(ctx context.Context, domainName string) (*providers.RegisterDomainResult, error)
+	verifyDomainFunc     func(ctx context.Context, domainID string) (bool, error)
 	getReceivedEmailFunc func(ctx context.Context, emailID string) (*providers.ReceivedEmail, error)
-	sendEmailFunc      func(ctx context.Context, input providers.SendEmailInput) (string, error)
-	ensureWebhookFunc  func(ctx context.Context, webhookURL string) (string, string, error)
+	sendEmailFunc        func(ctx context.Context, input providers.SendEmailInput) (string, error)
+	ensureWebhookFunc    func(ctx context.Context, webhookURL string) (string, string, error)
 }
 
 func (m *mockEmailProvider) RegisterDomain(ctx context.Context, domainName string) (*providers.RegisterDomainResult, error) {
@@ -407,7 +407,6 @@ func TestDomainService_VerifyDomains(t *testing.T) {
 		t.Error("expected domain to be verified by VerifyDomains")
 	}
 }
-
 
 func TestAliasService_Create(t *testing.T) {
 	mockRepo := &mockAliasRepository{}

@@ -10,11 +10,11 @@ import (
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/joho/godotenv"
 	"github.com/khrees/veilo/config"
-	"github.com/khrees/veilo/models"
-	"github.com/khrees/veilo/repositories"
 	"github.com/khrees/veilo/controllers"
-	"github.com/khrees/veilo/services"
+	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/providers"
+	"github.com/khrees/veilo/repositories"
+	"github.com/khrees/veilo/services"
 	"github.com/resend/resend-go/v3"
 )
 

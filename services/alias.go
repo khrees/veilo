@@ -1,3 +1,4 @@
+// Package services implements the business logic and core services for the Veilo application.
 package services
 
 import (
