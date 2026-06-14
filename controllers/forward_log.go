@@ -1,8 +1,16 @@
 package controllers
 
 import (
+	"strconv"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/khrees/veilo/services"
+)
+
+const (
+	defaultLimit = 50
+	maxLimit     = 100
+	defaultOffset = 0
 )
 
 // IForwardLogController interface for forward log controller
@@ -23,21 +31,20 @@ func NewForwardLogController(forwardLogSvc services.IForwardLogService) IForward
 func (c *forwardLogController) RegisterRoutes(app *fiber.App) {
 	api := app.Group("/v1")
 
-	api.Get("/forward-logs/:aliasID", c.GetForwardLogs)
 	api.Get("/aliases/:aliasID/logs", c.GetForwardLogs)
 }
 
 func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
 	aliasID := ctx.Params("aliasID")
 
-	limit := 50
-	offset := 0
+	limit := defaultLimit
+	offset := defaultOffset
 
 	if l := ctx.Query("limit"); l != "" {
-		limit = ParseInt(l)
+		limit = ClampInt(l, 1, maxLimit, defaultLimit)
 	}
 	if o := ctx.Query("offset"); o != "" {
-		offset = ParseInt(o)
+		offset = ClampInt(o, 0, 1<<31-1, defaultOffset)
 	}
 
 	logs, err := c.forwardLogSvc.GetByAliasID(aliasID, limit, offset)
@@ -48,15 +55,18 @@ func (c *forwardLogController) GetForwardLogs(ctx fiber.Ctx) error {
 	return SendSuccess(ctx, fiber.StatusOK, "Forward logs retrieved successfully", logs)
 }
 
-// ParseInt converts a string to an integer, stopping at non-digit characters.
-// It returns 0 if the string doesn't start with a digit.
-func ParseInt(value string) int {
-	var result int
-	for _, c := range value {
-		if c < '0' || c > '9' {
-			break
-		}
-		result = result*10 + int(c-'0')
+// ClampInt parses a string as an integer, returning fallback on error
+// and clamping the result to [min, max].
+func ClampInt(s string, min, max, fallback int) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return fallback
 	}
-	return result
+	if n < min {
+		return min
+	}
+	if n > max {
+		return max
+	}
+	return n
 }

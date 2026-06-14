@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
-	"github.com/khrees/veilo/repositories"
 	"github.com/khrees/veilo/services"
 	"github.com/resend/resend-go/v3"
 	"github.com/stretchr/testify/mock"
@@ -74,10 +73,10 @@ func (m *mockForwardLogRepo) FindByAliasID(aliasID string, limit, offset int) ([
 	return args.Get(0).([]models.ForwardLog), args.Error(1)
 }
 
-func (m *mockForwardLogRepo) GetStats() (*repositories.Stats, error) {
+func (m *mockForwardLogRepo) GetStats() (*models.Stats, error) {
 	args := m.Called()
 	if a := args.Get(0); a != nil {
-		return a.(*repositories.Stats), args.Error(1)
+		return a.(*models.Stats), args.Error(1)
 	}
 	return nil, args.Error(1)
 }

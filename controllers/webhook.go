@@ -56,8 +56,8 @@ type EmailReceived struct {
 	CreatedAt   time.Time     `json:"created_at"`
 	From        string        `json:"from"`
 	To          []string      `json:"to"`
-	Bcc         []interface{} `json:"bcc"`
-	Cc          []interface{} `json:"cc"`
+	Bcc         []string `json:"bcc"`
+	Cc          []string `json:"cc"`
 	MessageID   string        `json:"message_id"`
 	Subject     string        `json:"subject"`
 	Attachments []Attachment  `json:"attachments"`
@@ -155,7 +155,7 @@ func (c *webhookController) HandleInboundWebhook(ctx fiber.Ctx) error {
 		err = c.webhookSvc.ProcessEmailReceived(ctx.Context(), input)
 		if err != nil {
 			log.Errorf("failed to process inbound email webhook: %v", err)
-			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to process inbound email")
 		}
 
 		return ctx.SendStatus(fiber.StatusOK)

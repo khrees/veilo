@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"net/mail"
+	"strings"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/khrees/veilo/models"
 	"github.com/khrees/veilo/services"
@@ -48,6 +51,22 @@ func (c *aliasController) CreateAlias(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
+	// Validate required fields.
+	body.Address = strings.TrimSpace(body.Address)
+	body.Slug = strings.TrimSpace(body.Slug)
+	body.Domain = strings.TrimSpace(body.Domain)
+	body.RealEmail = strings.TrimSpace(body.RealEmail)
+
+	if body.Address == "" || body.Slug == "" || body.Domain == "" || body.RealEmail == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "address, slug, domain, and real_email are required")
+	}
+	if _, err := mail.ParseAddress(body.RealEmail); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "real_email must be a valid email address")
+	}
+	if _, err := mail.ParseAddress(body.Address); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "address must be a valid email address")
+	}
+
 	enabled := true
 	if body.Enabled != nil {
 		enabled = *body.Enabled
@@ -87,12 +106,12 @@ func (c *aliasController) ListAliases(ctx fiber.Ctx) error {
 	}
 
 	if limitStr := ctx.Query("limit"); limitStr != "" {
-		val := ParseInt(limitStr)
+		val := ClampInt(limitStr, 1, maxLimit, defaultLimit)
 		filter.Limit = &val
 	}
 
 	if offsetStr := ctx.Query("offset"); offsetStr != "" {
-		val := ParseInt(offsetStr)
+		val := ClampInt(offsetStr, 0, 1<<31-1, defaultOffset)
 		filter.Offset = &val
 	}
 
@@ -115,11 +134,10 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 	id := ctx.Params("id")
 
 	var body struct {
-		Address      *string `json:"address,omitempty"`
-		RealEmail    *string `json:"real_email,omitempty"`
-		Label        *string `json:"label,omitempty"`
-		Enabled      *bool   `json:"enabled,omitempty"`
-		ForwardCount *int    `json:"forward_count,omitempty"`
+		Address   *string `json:"address,omitempty"`
+		RealEmail *string `json:"real_email,omitempty"`
+		Label     *string `json:"label,omitempty"`
+		Enabled   *bool   `json:"enabled,omitempty"`
 	}
 
 	if err := ctx.Bind().Body(&body); err != nil {
@@ -128,19 +146,24 @@ func (c *aliasController) UpdateAlias(ctx fiber.Ctx) error {
 
 	updates := make(map[string]any)
 	if body.Address != nil {
-		updates["address"] = *body.Address
+		addr := strings.TrimSpace(*body.Address)
+		if _, err := mail.ParseAddress(addr); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "address must be a valid email address")
+		}
+		updates["address"] = addr
 	}
 	if body.RealEmail != nil {
-		updates["real_email"] = *body.RealEmail
+		email := strings.TrimSpace(*body.RealEmail)
+		if _, err := mail.ParseAddress(email); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "real_email must be a valid email address")
+		}
+		updates["real_email"] = email
 	}
 	if body.Label != nil {
 		updates["label"] = *body.Label
 	}
 	if body.Enabled != nil {
 		updates["enabled"] = *body.Enabled
-	}
-	if body.ForwardCount != nil {
-		updates["forward_count"] = *body.ForwardCount
 	}
 
 	if err := c.aliasSvc.Update(id, updates); err != nil {

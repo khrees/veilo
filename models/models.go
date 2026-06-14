@@ -84,3 +84,9 @@ func (f *ForwardLog) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type Stats struct {
+	TotalAliases   int64 `json:"total_aliases"`
+	TotalForwarded int64 `json:"total_forwarded"`
+	TotalBlocked   int64 `json:"total_blocked"`
+}

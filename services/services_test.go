@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/models"
-	"github.com/khrees/veilo/repositories"
 	"github.com/khrees/veilo/services"
 )
 
@@ -167,7 +166,7 @@ func (m *mockAliasRepository) FindByAddress(address string) (*models.Alias, erro
 // Mock ForwardLog Repository
 type mockForwardLogRepository struct {
 	logs  map[string]*models.ForwardLog
-	stats *repositories.Stats
+	stats *models.Stats
 	err   error
 }
 
@@ -184,7 +183,7 @@ func (m *mockForwardLogRepository) FindByAliasID(aliasID string, limit, offset i
 	return result, nil
 }
 
-func (m *mockForwardLogRepository) GetStats() (*repositories.Stats, error) {
+func (m *mockForwardLogRepository) GetStats() (*models.Stats, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -443,7 +442,7 @@ func TestForwardLogService_GetByAliasID(t *testing.T) {
 
 func TestForwardLogService_GetStats(t *testing.T) {
 	mockRepo := &mockForwardLogRepository{
-		stats: &repositories.Stats{
+		stats: &models.Stats{
 			TotalAliases:   10,
 			TotalForwarded: 100,
 			TotalBlocked:   5,

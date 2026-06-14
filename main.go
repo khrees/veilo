@@ -16,16 +16,18 @@ import (
 )
 
 type Config struct {
-	Port              string `env:"PORT"`
-	WebhookSecret     string `env:"WEBHOOK_SECRET,required"`
-	ResendAPIKey      string `env:"RESEND_API_KEY"`
-	ReplyTokenTTLDays int    `env:"REPLY_TOKEN_TTL_DAYS" envDefault:"90"`
+	Port              string   `env:"PORT"`
+	WebhookSecret     string   `env:"WEBHOOK_SECRET,required"`
+	ResendAPIKey      string   `env:"RESEND_API_KEY"`
+	ReplyTokenTTLDays int      `env:"REPLY_TOKEN_TTL_DAYS" envDefault:"90"`
+	CORSOrigins       []string `env:"CORS_ORIGINS" envSeparator:"," envDefault:"*"`
+	RateLimit         int      `env:"RATE_LIMIT" envDefault:"60"`
+	APIKey            string   `env:"API_KEY"`
 }
 
 func main() {
 	_ = godotenv.Load()
 
-	var cfg Config
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {
 		log.Fatal(err)
@@ -68,12 +70,17 @@ func main() {
 	resendClient := resend.NewClient(cfg.ResendAPIKey)
 	webhookSvc := services.NewWebhookService(aliasRepo, forwardLogRepo, replyTokenRepo, resendClient, cfg.ReplyTokenTTLDays)
 
-	server := NewServer(cfg.Port, controllers.RouteDeps{
+	server := NewServer(ServerConfig{
+		Port:        cfg.Port,
+		CORSOrigins: cfg.CORSOrigins,
+		RateLimit:   cfg.RateLimit,
+	}, controllers.RouteDeps{
 		DomainSvc:     domainSvc,
 		AliasSvc:      aliasSvc,
 		ForwardLogSvc: forwardLogSvc,
 		WebhookSvc:    webhookSvc,
 		WebhookSecret: cfg.WebhookSecret,
+		APIKey:        cfg.APIKey,
 	})
 	log.Fatal(server.Start())
 }

@@ -8,7 +8,7 @@ import (
 type ForwardLogRepository interface {
 	Create(f *models.ForwardLog) error
 	FindByAliasID(aliasID string, limit, offset int) ([]models.ForwardLog, error)
-	GetStats() (*Stats, error)
+	GetStats() (*models.Stats, error)
 }
 
 type forwardLogRepository struct {
@@ -32,8 +32,8 @@ func (r *forwardLogRepository) FindByAliasID(aliasID string, limit, offset int) 
 		Find(&logs).Error
 }
 
-func (r *forwardLogRepository) GetStats() (*Stats, error) {
-	var s Stats
+func (r *forwardLogRepository) GetStats() (*models.Stats, error) {
+	var s models.Stats
 
 	if err := r.db.Model(&models.Alias{}).Count(&s.TotalAliases).Error; err != nil {
 		return nil, err

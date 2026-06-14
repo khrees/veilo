@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -21,13 +22,20 @@ import (
 	"gorm.io/gorm"
 )
 
+// ServerConfig groups configuration values needed by the HTTP server.
+type ServerConfig struct {
+	Port        string
+	CORSOrigins []string
+	RateLimit   int
+}
+
 type server struct {
 	app             *fiber.App
 	port            string
 	shutdownTimeout time.Duration
 }
 
-func NewServer(port string, deps controllers.RouteDeps) *server {
+func NewServer(cfg ServerConfig, deps controllers.RouteDeps) *server {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
@@ -59,12 +67,12 @@ func NewServer(port string, deps controllers.RouteDeps) *server {
 			return controllers.SendError(ctx, code, message, nil)
 		},
 	})
-	registerMiddleware(app)
+	registerMiddleware(app, cfg)
 	registerRoutes(app, deps)
 
 	return &server{
 		app:             app,
-		port:            port,
+		port:            cfg.Port,
 		shutdownTimeout: 5 * time.Second,
 	}
 }
@@ -103,7 +111,7 @@ func (s *server) Start() error {
 	}
 }
 
-func registerMiddleware(app *fiber.App) {
+func registerMiddleware(app *fiber.App, cfg ServerConfig) {
 	app.Use(requestid.New(requestid.Config{
 		Generator: func() string {
 			return uuid.NewString()
@@ -114,9 +122,14 @@ func registerMiddleware(app *fiber.App) {
 	}))
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
+		AllowOrigins: cfg.CORSOrigins,
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+	}))
+	app.Use(limiter.New(limiter.Config{
+		Max:               cfg.RateLimit,
+		Expiration:        1 * time.Minute,
+		LimiterMiddleware: limiter.SlidingWindow{},
 	}))
 }
 
@@ -127,3 +140,4 @@ func registerRoutes(app *fiber.App, deps controllers.RouteDeps) {
 
 	controllers.SetupRoutes(app, deps)
 }
+

@@ -6,30 +6,35 @@ import (
 	"github.com/khrees/veilo/controllers"
 )
 
-// Test the parseInt helper function (it's not exported, so we test it via the routes package)
-func TestParseInt(t *testing.T) {
+// TestClampInt tests the clampInt helper used for safe query-parameter parsing.
+func TestClampInt(t *testing.T) {
 	tests := []struct {
+		name     string
 		input    string
+		min      int
+		max      int
+		fallback int
 		expected int
 	}{
-		{"", 0},
-		{"0", 0},
-		{"123", 123},
-		{"999", 999},
-		{"abc", 0},
-		{"123abc", 123},
-		{"abc123", 0},
-		{"100200", 100200},
-		{"-123", 0}, // negative sign stops parsing
-		{"123-456", 123},
+		{"valid in range", "50", 1, 100, 10, 50},
+		{"below min", "0", 1, 100, 10, 1},
+		{"above max", "200", 1, 100, 10, 100},
+		{"at min", "1", 1, 100, 10, 1},
+		{"at max", "100", 1, 100, 10, 100},
+		{"empty string", "", 1, 100, 10, 10},
+		{"non-numeric", "abc", 1, 100, 10, 10},
+		{"mixed string", "12abc", 1, 100, 10, 10},
+		{"negative", "-5", 0, 100, 10, 0},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := controllers.ParseInt(tt.input)
+		t.Run(tt.name, func(t *testing.T) {
+			result := controllers.ClampInt(tt.input, tt.min, tt.max, tt.fallback)
 			if result != tt.expected {
-				t.Errorf("parseInt(%q) = %d; want %d", tt.input, result, tt.expected)
+				t.Errorf("clampInt(%q, %d, %d, %d) = %d; want %d",
+					tt.input, tt.min, tt.max, tt.fallback, result, tt.expected)
 			}
 		})
 	}
 }
+

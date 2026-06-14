@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/khrees/veilo/controllers"
 	"github.com/khrees/veilo/models"
-	"github.com/khrees/veilo/repositories"
 	"github.com/khrees/veilo/services"
 	"github.com/stretchr/testify/mock"
 )
@@ -115,10 +114,10 @@ func (m *mockForwardLogService) GetByAliasID(aliasID string, limit, offset int) 
 	return nil, args.Error(1)
 }
 
-func (m *mockForwardLogService) GetStats() (*repositories.Stats, error) {
+func (m *mockForwardLogService) GetStats() (*models.Stats, error) {
 	args := m.Called()
 	if arg0 := args.Get(0); arg0 != nil {
-		return arg0.(*repositories.Stats), args.Error(1)
+		return arg0.(*models.Stats), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -579,7 +578,7 @@ func TestForwardLogController_GetForwardLogs(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/forward-logs/"+aliasID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/aliases/"+aliasID.String()+"/logs", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -613,11 +612,11 @@ func TestForwardLogController_GetForwardLogs(t *testing.T) {
 
 func TestForwardLogController_GetForwardLogs_WithPagination(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
-	mockSvc.On("GetByAliasID", mock.Anything, mock.Anything, mock.Anything).Return([]models.ForwardLog{}, nil)
+	mockSvc.On("GetByAliasID", mock.Anything, 10, 20).Return([]models.ForwardLog{}, nil)
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/forward-logs/"+uuid.New().String()+"?limit=10&offset=20", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/aliases/"+uuid.New().String()+"/logs?limit=10&offset=20", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -638,7 +637,7 @@ func TestForwardLogController_GetForwardLogs_DefaultPagination(t *testing.T) {
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/forward-logs/"+uuid.New().String(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/aliases/"+uuid.New().String()+"/logs", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -677,7 +676,7 @@ func TestForwardLogController_GetForwardLogs_AliasEndpoint(t *testing.T) {
 
 func TestStatsController_GetStats(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
-	stats := &repositories.Stats{
+	stats := &models.Stats{
 		TotalAliases:   10,
 		TotalForwarded: 100,
 		TotalBlocked:   5,
@@ -699,8 +698,8 @@ func TestStatsController_GetStats(t *testing.T) {
 	}
 
 	var apiResp struct {
-		Success bool               `json:"success"`
-		Data    repositories.Stats `json:"data"`
+		Success bool         `json:"success"`
+		Data    models.Stats `json:"data"`
 	}
 	err = json.NewDecoder(resp.Body).Decode(&apiResp)
 	if err != nil {
@@ -726,7 +725,7 @@ func TestStatsController_GetStats(t *testing.T) {
 
 func TestStatsController_GetStats_Error(t *testing.T) {
 	mockSvc := new(mockForwardLogService)
-	mockSvc.On("GetStats").Return((*repositories.Stats)(nil), errors.New("boom"))
+	mockSvc.On("GetStats").Return((*models.Stats)(nil), errors.New("boom"))
 
 	app := createTestApp(controllers.RouteDeps{ForwardLogSvc: mockSvc})
 
@@ -747,4 +746,59 @@ func TestStatsController_GetStats_Error(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func TestApiKeyAuth(t *testing.T) {
+	app := fiber.New()
+	app.Use("/v1", controllers.ApiKeyAuth("test_api_key"))
+	app.Get("/v1/test", func(c fiber.Ctx) error {
+		return c.SendString("success")
+	})
+
+	// 1. Missing Authorization Header -> 401
+	req1 := httptest.NewRequest(http.MethodGet, "/v1/test", nil)
+	resp1, err := app.Test(req1)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp1.Body.Close()
+	if resp1.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", resp1.StatusCode)
+	}
+
+	// 2. Invalid API Key -> 401
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/test", nil)
+	req2.Header.Set("Authorization", "Bearer invalid")
+	resp2, err := app.Test(req2)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", resp2.StatusCode)
+	}
+
+	// 3. Valid API Key (Bearer format) -> 200
+	req3 := httptest.NewRequest(http.MethodGet, "/v1/test", nil)
+	req3.Header.Set("Authorization", "Bearer test_api_key")
+	resp3, err := app.Test(req3)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp3.Body.Close()
+	if resp3.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp3.StatusCode)
+	}
+
+	// 4. Valid API Key (Raw format) -> 200
+	req4 := httptest.NewRequest(http.MethodGet, "/v1/test", nil)
+	req4.Header.Set("Authorization", "test_api_key")
+	resp4, err := app.Test(req4)
+	if err != nil {
+		t.Fatalf("failed to test request: %v", err)
+	}
+	resp4.Body.Close()
+	if resp4.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp4.StatusCode)
+	}
 }
