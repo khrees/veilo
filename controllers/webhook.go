@@ -3,6 +3,8 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -10,6 +12,8 @@ import (
 	"github.com/khrees/veilo/services"
 	svix "github.com/svix/svix-webhooks/go"
 )
+
+
 
 // WebhookEvent represents a Resend webhook event with a type-discriminated Data field.
 type WebhookEvent struct {
@@ -124,7 +128,7 @@ func (c *webhookController) HandleInboundWebhook(ctx fiber.Ctx) error {
 		}
 	}
 
-	// Verify the webhook signature.
+	// Verify the webhook signature first.
 	wh, err := svix.NewWebhook(c.webhookSecret)
 	if err != nil {
 		log.Errorf("invalid webhook secret: %v", err)
@@ -134,7 +138,7 @@ func (c *webhookController) HandleInboundWebhook(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized, "invalid webhook signature")
 	}
 
-	// Signature valid — parse the event.
+	// Parse the event.
 	webhook, err := ParseWebhookEvent(payload)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid webhook payload")
@@ -145,6 +149,29 @@ func (c *webhookController) HandleInboundWebhook(ctx fiber.Ctx) error {
 		emailData, ok := webhook.Data.(EmailReceived)
 		if !ok {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid email.received data")
+		}
+
+		// Validate from address format
+		if _, err := mail.ParseAddress(strings.TrimSpace(emailData.From)); err != nil {
+			log.Warnf("webhook: invalid from address: %s", emailData.From)
+			return fiber.NewError(fiber.StatusBadRequest, "invalid 'from' address")
+		}
+
+		// Validate to addresses list
+		if len(emailData.To) == 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "no 'to' addresses provided")
+		}
+		for _, email := range emailData.To {
+			if _, err := mail.ParseAddress(strings.TrimSpace(email)); err != nil {
+				log.Warnf("webhook: invalid to address: %s", email)
+				return fiber.NewError(fiber.StatusBadRequest, "invalid 'to' address")
+			}
+		}
+
+		// Validate subject length
+		if len(emailData.Subject) > 256 {
+			log.Warnf("webhook: subject too long: %d characters", len(emailData.Subject))
+			return fiber.NewError(fiber.StatusBadRequest, "subject exceeds 256 characters")
 		}
 
 		input := services.EmailReceivedInput{

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -18,6 +20,19 @@ import (
 	"github.com/khrees/veilo/models"
 	"github.com/spf13/cobra"
 )
+
+// httpClient is a shared HTTP client with connection pooling and timeouts.
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
+	},
+}
 
 type CLIConfig struct {
 	APIURL        string `json:"api_url"`
@@ -160,22 +175,23 @@ func makeRequest(method, path string, body any, target any) error {
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal request body: %w", err)
 		}
 		bodyReader = bytes.NewReader(b)
 	}
 
 	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	if cfg.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
@@ -196,11 +212,52 @@ func makeRequest(method, path string, body any, target any) error {
 	if target != nil {
 		var raw map[string]json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-			return err
+			return fmt.Errorf("failed to decode response: %w", err)
 		}
 		if dataJSON, ok := raw["data"]; ok {
 			return json.Unmarshal(dataJSON, target)
 		}
+	}
+	return nil
+}
+
+// validateAliasName checks if an alias slug is valid.
+func validateAliasName(slug string) error {
+	if slug == "" {
+		return errors.New("alias slug is required")
+	}
+	if len(slug) > 25 {
+		return errors.New("alias slug must be 25 characters or less")
+	}
+	// Only allow alphanumeric, hyphens, and underscores
+	validSlug := regexp.MustCompile(`^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$`)
+	if !validSlug.MatchString(slug) {
+		return errors.New("alias slug can only contain lowercase letters, numbers, and hyphens")
+	}
+	return nil
+}
+
+// validateEmailFormat checks if an email address is valid.
+func validateEmailFormat(email string) error {
+	if email == "" {
+		return errors.New("email is required")
+	}
+	if len(email) > 254 {
+		return errors.New("email address exceeds maximum length of 254 characters")
+	}
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return errors.New("invalid email format")
+	}
+	local, domain := parts[0], parts[1]
+	if local == "" || domain == "" {
+		return errors.New("invalid email format")
+	}
+	if len(domain) < 3 {
+		return errors.New("domain name is too short")
+	}
+	if !strings.Contains(domain, ".") {
+		return errors.New("domain must contain a dot")
 	}
 	return nil
 }

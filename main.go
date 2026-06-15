@@ -41,7 +41,7 @@ func startServer() {
 
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to parse environment config: %v", err)
 	}
 
 	if cfg.APIKey == "" {
@@ -57,7 +57,7 @@ func startServer() {
 
 	dbCfg := &config.DBConfig{}
 	if err := env.Parse(dbCfg); err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to parse database config: %v", err)
 	}
 	log.Infof(
 		"db config loaded host=%s port=%s user=%s db=%s sslmode=%s password_len=%d database_url=%t",
@@ -143,5 +143,8 @@ func startServer() {
 		WebhookSecret: cfg.WebhookSecret,
 		APIKey:        cfg.APIKey,
 	})
-	log.Fatal(server.Start())
+	if err := server.Start(); err != nil {
+		log.Fatalf("server terminated with error: %v", err)
+	}
+	log.Info("server stopped gracefully")
 }
